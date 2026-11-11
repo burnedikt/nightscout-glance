@@ -15,137 +15,194 @@
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="apple-touch-icon" href="icon.png">
+<link rel="preload" href="fonts/bricolage-grotesque.woff2" as="font" type="font/woff2" crossorigin>
 <style>
+  /* Bricolage Grotesque, SIL Open Font License 1.1, served from this site (no third-party requests). */
+  @font-face {
+    font-family: "Bricolage Grotesque";
+    src: url(fonts/bricolage-grotesque.woff2) format("woff2");
+    font-weight: 200 800; font-display: swap;
+  }
+
+  /* Colour means the same thing here as in the app: green in range, amber high, red low.
+     Nothing else on the page is coloured. */
   :root {
-    --bg: #0c1222;
-    --bg-2: #121a30;
-    --card: #ffffff0a;
-    --line: #ffffff17;
+    --bg: #0b1120;
+    --surface: #131b2e;
+    --line: #ffffff1c;
     --text: #f2f5fb;
-    --muted: #a7b1c8;
-    --green: #4ade80;
-    --green-ink: #06210f;
-    --amber: #ffc247;
-    --red: #ff6b6b;
-    --shadow: 0 30px 80px #0009;
-    --hero: url(hero-bg-dark.png);
+    --muted: #a3aec6;
+    --in-range: #4ade80;
+    --high: #ffc247;
+    --low: #ff6b6b;
+    --shadow: 0 24px 60px #000a;
+    --display: "Bricolage Grotesque", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+    --ui: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
     color-scheme: dark;
   }
   @media (prefers-color-scheme: light) {
     :root {
-      --bg: #f5f7fb;
-      --bg-2: #e9eef7;
-      --card: #ffffff;
-      --line: #0c12221a;
-      --text: #10172a;
-      --muted: #56607a;
-      --green: #15803d;
-      --green-ink: #ffffff;
-      --amber: #9a6000;
-      --red: #c42b1c;
-      --shadow: 0 30px 70px #1b2a5a33;
-      --hero: url(hero-bg-light.png);
+      --bg: #f3f5f9;
+      --surface: #ffffff;
+      --line: #0b11201f;
+      --text: #0f172a;
+      --muted: #535e78;
+      --in-range: #15803d;
+      --high: #9a6000;
+      --low: #c42b1c;
+      --shadow: 0 24px 56px #1b2a5a2e;
       color-scheme: light;
     }
   }
+
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
-  body {
-    margin: 0;
-    background: linear-gradient(to bottom, transparent 420px, var(--bg) 760px), var(--hero) top center / max(100%, 1400px) auto no-repeat, var(--bg);
-    color: var(--text);
-    font: 17px/1.6 "Segoe UI Variable Text", "Segoe UI", Inter, system-ui, -apple-system, sans-serif;
-    -webkit-font-smoothing: antialiased;
-  }
-  a { color: inherit; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.6 var(--ui); -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-underline-offset: 3px; }
+  :focus-visible { outline: 2px solid var(--text); outline-offset: 3px; border-radius: 4px; }
   .wrap { width: min(1080px, 100% - 40px); margin-inline: auto; }
+  .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
-  header { display: flex; align-items: center; justify-content: space-between; padding: 22px 0; }
+  .top { display: flex; align-items: center; justify-content: space-between; padding: 22px 0; }
   .brand { display: flex; align-items: center; gap: 12px; font-weight: 600; text-decoration: none; }
   .brand img { width: 34px; height: 34px; }
-  nav a { color: var(--muted); text-decoration: none; font-size: 15px; margin-left: 22px; }
-  nav a:hover { color: var(--text); }
+  .top nav { display: flex; gap: 24px; }
+  .top nav a { color: var(--muted); text-decoration: none; font-size: 15px; }
+  .top nav a:hover { color: var(--text); }
 
-  .hero { display: grid; grid-template-columns: 1.05fr 1fr; gap: 56px; align-items: center; padding: 56px 0 88px; }
+  /* Intro */
+  .intro { padding: 56px 0 44px; max-width: 760px; }
   h1 {
-    font-family: "Segoe UI Variable Display", "Segoe UI", Inter, system-ui, sans-serif;
-    font-size: clamp(38px, 5.4vw, 60px); line-height: 1.06; letter-spacing: -0.02em; margin: 0 0 20px; font-weight: 600;
-    text-wrap: balance;
+    font-family: var(--display); font-weight: 650; font-size: clamp(42px, 7.4vw, 84px);
+    line-height: 0.98; letter-spacing: -0.035em; margin: 0 0 26px; text-wrap: balance;
   }
-  h1 em { font-style: normal; color: var(--green); }
-  .lede { color: var(--muted); font-size: 19px; max-width: 34em; margin: 0 0 32px; }
-  .cta { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .lede { color: var(--muted); font-size: 20px; line-height: 1.5; max-width: 33em; margin: 0 0 30px; }
+  .lede strong { color: var(--text); font-weight: 400; }
+  .downloads { display: flex; flex-wrap: wrap; gap: 12px; }
   .btn {
-    display: inline-flex; align-items: center; gap: 10px; padding: 13px 22px; border-radius: 10px;
-    font-weight: 600; text-decoration: none; border: 1px solid var(--line); transition: transform .12s, background .12s;
+    display: inline-flex; align-items: baseline; gap: 8px; padding: 13px 22px; border-radius: 10px;
+    font-weight: 600; text-decoration: none; border: 1px solid var(--text);
   }
-  .btn:hover { transform: translateY(-1px); }
-  .btn.primary { background: var(--green); color: var(--green-ink); border-color: transparent; }
-  .btn.ghost:hover { background: var(--card); }
-  .fine { color: var(--muted); font-size: 14px; margin-top: 16px; }
-  .fine a, .note a { color: inherit; }
-  .tag { font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
-  .note { color: var(--muted); font-size: 15px; margin-top: 28px; max-width: 34em; }
-  .note code { font-size: 13px; overflow-wrap: anywhere; }
+  .btn.primary { background: var(--text); color: var(--bg); }
+  .btn.primary:hover { opacity: .88; }
+  .btn.secondary { border-color: var(--line); }
+  .btn.secondary:hover { border-color: var(--text); }
+  .btn small { font-weight: 400; font-size: 14px; color: var(--muted); }
+  .fine { color: var(--muted); font-size: 14.5px; margin: 16px 0 0; max-width: 46em; }
 
-  /* Product shot: the real flyout above a drawn taskbar corner */
-  .shot { position: relative; padding: 28px 28px 0; border-radius: 18px; background: linear-gradient(160deg, var(--bg-2), transparent 70%); border: 1px solid var(--line); overflow: hidden; }
-  .shot picture img { display: block; width: min(388px, 100%); margin-left: auto; border-radius: 9px; box-shadow: var(--shadow); border: 1px solid var(--line); }
+  /* The stage: a strip of desktop with a real taskbar and the real flyout.
+     It carries its own light/dark tokens so the visitor can flip the taskbar. */
+  .stage {
+    --tb: #1c1c1ce6; --tb-line: #ffffff1a; --tb-text: #ffffff; --tb-dim: #ffffff33; --tb-hover: #ffffff1f;
+    --tb-high: #ffc247; --tb-low: #ff6b6b; --wall: url(hero-bg-dark.png); --wall-bg: #0b1120;
+    position: relative; border-radius: 16px; overflow: hidden; border: 1px solid var(--line);
+    background: var(--wall) center 30% / cover no-repeat, var(--wall-bg);
+    height: 452px; font-family: var(--ui);
+  }
+  .stage:has(#tb-light:checked) {
+    --tb: #eef1f6ee; --tb-line: #0000001f; --tb-text: #1a1a1a; --tb-dim: #00000030; --tb-hover: #00000014;
+    --tb-high: #9a6000; --tb-low: #c42b1c; --wall: url(hero-bg-light.png); --wall-bg: #e9eef7;
+  }
+  .stage .flyout {
+    position: absolute; right: 16px; bottom: 62px; width: min(388px, 100% - 24px);
+    border-radius: 9px; box-shadow: 0 18px 50px #0007; border: 1px solid var(--tb-line);
+    transform-origin: 62% 100%;
+  }
+  .stage .flyout.light, .stage:has(#tb-light:checked) .flyout.dark { display: none; }
+  .stage:has(#tb-light:checked) .flyout.light { display: block; }
   .taskbar {
-    margin: 14px -28px 0; padding: 0 22px; height: 50px; display: flex; align-items: center; justify-content: flex-end; gap: 18px;
-    background: #1c1c1cdd; border-top: 1px solid #ffffff14; color: #fff; font-size: 12px;
+    position: absolute; inset: auto 0 0 0; height: 50px; padding: 0 18px; display: flex; align-items: center; gap: 6px;
+    background: var(--tb); border-top: 1px solid var(--tb-line); color: var(--tb-text); font-size: 12px;
+    backdrop-filter: blur(18px);
   }
-  .taskbar .glyph { width: 16px; height: 16px; border-radius: 4px; background: #ffffff2e; }
-  .taskbar .value { font-weight: 600; font-size: 15px; padding: 5px 7px; border-radius: 5px; background: #ffffff1c; font-variant-numeric: tabular-nums; }
-  .taskbar .clock { text-align: right; line-height: 1.25; }
-  @media (prefers-color-scheme: light) {
-    .taskbar { background: #eef1f6; border-top-color: #0000001a; color: #1a1a1a; }
-    .taskbar .glyph { background: #00000026; }
-    .taskbar .value { background: #00000012; }
+  .taskbar .apps { flex: 1; display: flex; justify-content: center; gap: 14px; padding-left: 150px; }
+  .taskbar .app { width: 22px; height: 22px; border-radius: 6px; background: var(--tb-dim); }
+  .taskbar .chev { width: 8px; height: 8px; border: solid var(--tb-text); border-width: 1.5px 0 0 1.5px; transform: rotate(45deg); margin: 4px 10px 0 0; opacity: .8; }
+  .taskbar .value {
+    font-weight: 600; font-size: 16px; padding: 6px 8px; border-radius: 5px; background: var(--tb-hover);
+    color: var(--tb-high); font-variant-numeric: tabular-nums; line-height: 1;
+  }
+  .taskbar .glyph { width: 16px; height: 16px; border-radius: 4px; background: var(--tb-dim); margin-left: 10px; }
+  .taskbar .clock { text-align: right; line-height: 1.25; margin-left: 14px; }
+
+  .switch { position: absolute; top: 14px; left: 14px; display: flex; padding: 3px; border-radius: 999px; background: var(--tb); border: 1px solid var(--tb-line); backdrop-filter: blur(18px); }
+  .switch label { padding: 5px 13px; border-radius: 999px; font-size: 13px; color: var(--tb-text); cursor: pointer; }
+  .switch input:checked + label { background: var(--tb-text); color: var(--wall-bg); }
+  .switch input:focus-visible + label { outline: 2px solid var(--tb-text); outline-offset: 2px; }
+  .caption { color: var(--muted); font-size: 14.5px; margin: 12px 2px 0; }
+
+  /* One arrival on load: the flyout opens the way it does when you point at the number. */
+  @media (prefers-reduced-motion: no-preference) {
+    .stage .flyout { animation: open .5s cubic-bezier(.2, .8, .2, 1) .5s both; }
+    @keyframes open { from { opacity: 0; transform: translateY(10px) scale(.97); } }
   }
 
-  section { padding: 72px 0; border-top: 1px solid var(--line); }
-  h2 { font-family: "Segoe UI Variable Display", "Segoe UI", Inter, system-ui, sans-serif; font-size: clamp(26px, 3.2vw, 34px); letter-spacing: -0.01em; margin: 0 0 12px; font-weight: 600; text-wrap: balance; }
-  .sub { color: var(--muted); max-width: 40em; margin: 0 0 40px; }
+  /* Sections */
+  .block { padding: 104px 0 0; }
+  h2 { font-family: var(--display); font-weight: 650; font-size: clamp(30px, 4.2vw, 46px); line-height: 1.05; letter-spacing: -0.025em; margin: 0 0 14px; text-wrap: balance; }
+  .sub { color: var(--muted); font-size: 18px; max-width: 36em; margin: 0 0 40px; }
 
-  .states { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-  .state { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 22px; }
-  .state .num { font-size: 40px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; margin-bottom: 12px; }
-  .state p { margin: 0; color: var(--muted); font-size: 15px; }
-  .state b { display: block; color: var(--text); font-weight: 600; margin-bottom: 2px; }
+  /* Specimen: the same four readings on a dark and a light taskbar */
+  .specimen { border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+  .specimen .row { display: grid; grid-template-columns: repeat(4, 1fr); }
+  .specimen .strip { font-family: var(--ui); font-weight: 600; font-size: clamp(34px, 6.4vw, 64px); line-height: 1; font-variant-numeric: tabular-nums; }
+  .specimen .strip > div { padding: clamp(18px, 3.4vw, 34px) clamp(14px, 2.6vw, 28px); }
+  .strip.dark { background: #1c1c1c; color: #fff; --s-low: #ff6b6b; --s-high: #ffc247; }
+  .strip.light { background: #eef1f6; color: #1a1a1a; --s-low: #c42b1c; --s-high: #9a6000; }
+  .strip .is-low { color: var(--s-low); }
+  .strip .is-high { color: var(--s-high); }
+  .strip .is-stale { opacity: .45; }
+  .specimen .legend { background: var(--surface); border-top: 1px solid var(--line); }
+  .specimen .legend > div { padding: 16px clamp(14px, 2.6vw, 28px) 20px; font-size: 15px; color: var(--muted); }
+  .specimen .legend b { display: block; color: var(--text); font-weight: 600; }
 
-  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 24px; }
-  .card h3 { margin: 0 0 6px; font-size: 18px; font-weight: 600; }
-  .card p { margin: 0; color: var(--muted); font-size: 15.5px; }
+  /* Facts: plain two-column list, no boxes */
+  .facts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0 64px; margin: 0; }
+  .facts > div { padding: 22px 0; border-top: 1px solid var(--line); }
+  .facts dt { font-weight: 600; font-size: 18px; margin-bottom: 4px; }
+  .facts dd { margin: 0; color: var(--muted); max-width: 30em; }
 
-  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; }
-  .split picture img { width: 100%; max-width: 540px; border-radius: 12px; border: 1px solid var(--line); box-shadow: var(--shadow); display: block; }
-  ol.steps { list-style: none; counter-reset: s; padding: 0; margin: 0; display: grid; gap: 22px; }
-  ol.steps li { counter-increment: s; display: grid; grid-template-columns: 38px 1fr; gap: 14px; }
-  ol.steps li::before {
-    content: counter(s); width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
-    font-weight: 600; font-size: 15px; color: var(--green); border: 1px solid var(--line); background: var(--card);
-  }
-  ol.steps b { display: block; }
-  ol.steps span { color: var(--muted); font-size: 15.5px; }
+  /* Setup */
+  .setup { display: grid; grid-template-columns: 1fr minmax(0, 440px); gap: 72px; align-items: start; }
+  .setup img { width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--line); box-shadow: var(--shadow); display: block; }
+  .setup .light-only { display: none; }
+  @media (prefers-color-scheme: light) { .setup .dark-only { display: none; } .setup .light-only { display: block; } }
+  ol.steps { list-style: none; counter-reset: s; padding: 0; margin: 0; display: grid; gap: 26px; }
+  ol.steps li { counter-increment: s; display: grid; grid-template-columns: 44px 1fr; }
+  ol.steps li::before { content: counter(s); font-family: var(--display); font-weight: 650; font-size: 30px; line-height: 1; color: var(--muted); }
+  ol.steps b { display: block; font-size: 18px; }
+  ol.steps span { color: var(--muted); }
+  code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: .88em; }
+  .mac { margin-top: 44px; padding: 20px 22px; border: 1px solid var(--line); border-radius: 12px; color: var(--muted); font-size: 15.5px; }
+  .mac b { color: var(--text); }
+  .mac code { display: block; margin-top: 10px; color: var(--text); overflow-wrap: anywhere; }
 
-  footer { border-top: 1px solid var(--line); padding: 36px 0 56px; color: var(--muted); font-size: 14px; }
+  footer { margin-top: 104px; border-top: 1px solid var(--line); padding: 32px 0 56px; color: var(--muted); font-size: 14.5px; }
   footer p { max-width: 62em; margin: 0 0 10px; }
+  footer b { color: var(--text); }
 
   @media (max-width: 860px) {
-    .hero, .split { grid-template-columns: 1fr; gap: 40px; }
-    .hero { padding: 28px 0 64px; }
-    .states { grid-template-columns: repeat(2, 1fr); }
-    .grid { grid-template-columns: 1fr; }
-    nav a:first-child { display: none; }
-    .shot picture img { margin-inline: auto; }
+    .intro { padding: 28px 0 36px; }
+    .stage { height: 420px; }
+    .stage .flyout { right: 12px; }
+    .taskbar { padding: 0 12px; }
+    .taskbar .apps { display: none; }
+    .taskbar .chev { margin-left: auto; }
+    .block { padding-top: 76px; }
+    .facts { grid-template-columns: 1fr; }
+    .setup { grid-template-columns: 1fr; gap: 44px; }
+    .specimen .legend > div { font-size: 13.5px; }
+    footer { margin-top: 76px; }
+  }
+  @media (max-width: 520px) {
+    .top nav a:first-child { display: none; }
+    .specimen .legend span { display: none; }
   }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header>
+  <header class="top">
     <a class="brand" href="#"><img src="favicon.svg" alt="">Nightscout Glance</a>
     <nav>
       <a href="#setup">Setup</a>
@@ -154,56 +211,68 @@
   </header>
 
   <main>
-    <div class="hero">
-      <div>
-        <h1>Glucose <em>at a glance</em>, right in your taskbar.</h1>
-        <p class="lede">Nightscout Glance puts the current reading from your Nightscout site into the Windows tray as a plain number. Hover over it and the last hours appear as a graph. Made by a parent who checks it all day.</p>
-        <div class="cta">
-          <a class="btn primary" href="https://github.com/burnedikt/nightscout-glance/releases/latest/download/NightscoutGlance.exe">Download for Windows</a>
-          <a class="btn ghost" href="https://github.com/burnedikt/nightscout-glance/releases/latest/download/NightscoutGlance-macos.zip">Download for macOS <span class="tag">beta</span></a>
-          <a class="btn ghost" href="https://github.com/burnedikt/nightscout-glance">View source</a>
-        </div>
-        <p class="fine">Free and open source. Windows 10 and 11: one 9 MB file, no installer. macOS 11 or later, Apple Silicon and Intel: experimental, see <a href="#mac">the note below</a>.</p>
+    <div class="intro">
+      <h1>Glucose, right next to the clock.</h1>
+      <p class="lede">Nightscout Glance puts the current reading from your Nightscout site into the Windows taskbar as a plain number. Point at it and the last hours appear as a graph. <strong>Made by a parent who checks it all day.</strong></p>
+      <div class="downloads">
+        <a class="btn primary" href="https://github.com/burnedikt/nightscout-glance/releases/latest/download/NightscoutGlance.exe">Download for Windows</a>
+        <a class="btn secondary" href="https://github.com/burnedikt/nightscout-glance/releases/latest/download/NightscoutGlance-macos.zip">Download for macOS <small>beta</small></a>
       </div>
-      <div class="shot">
-        <picture>
-          <source srcset="img/flyout-light.png" media="(prefers-color-scheme: light)">
-          <img src="img/flyout-dark.png" width="388" height="292" alt="The hover flyout: current value 164 mg/dL with a trend arrow, change since the last reading, and a three-hour graph with the target range shaded.">
-        </picture>
-        <div class="taskbar" aria-hidden="true">
-          <span class="value">164</span>
-          <span class="glyph"></span><span class="glyph"></span><span class="glyph"></span>
-          <span class="clock">14:36<br>11.11.2026</span>
-        </div>
-      </div>
+      <p class="fine">Free and open source. Windows 10 and 11: one 9 MB file, no installer. macOS 11 or later: experimental, <a href="#mac">read this first</a>.</p>
     </div>
 
-    <section>
+    <div class="stage">
+      <img class="flyout dark" src="img/flyout-dark.png" width="388" height="292" alt="The flyout that opens above the taskbar number: 201 mg/dL, rising, 4 more than the last reading, with a three-hour graph and the target range shaded.">
+      <img class="flyout light" src="img/flyout-light.png" width="388" height="292" alt="The same flyout on a light taskbar.">
+      <fieldset class="switch" style="margin:0">
+        <legend class="visually-hidden">Taskbar colour</legend>
+        <input class="visually-hidden" type="radio" name="tb" id="tb-dark" checked><label for="tb-dark">Dark taskbar</label>
+        <input class="visually-hidden" type="radio" name="tb" id="tb-light"><label for="tb-light">Light taskbar</label>
+      </fieldset>
+      <div class="taskbar" aria-hidden="true">
+        <div class="apps"><span class="app"></span><span class="app"></span><span class="app"></span><span class="app"></span><span class="app"></span></div>
+        <span class="chev"></span>
+        <span class="value">201</span>
+        <span class="glyph"></span><span class="glyph"></span><span class="glyph"></span>
+        <span class="clock">15:29<br>11.11.2026</span>
+      </div>
+    </div>
+    <p class="caption">The flyout as it opens above the taskbar. Switch the taskbar to see the number redrawn for it.</p>
+
+    <section class="block">
       <h2>The number is the icon</h2>
-      <p class="sub">No coloured blob to decode. The tray shows the value itself, redrawn for light and dark taskbars so you can always read it.</p>
-      <div class="states">
-        <div class="state"><div class="num">112</div><p><b>In range</b>Plain taskbar text colour.</p></div>
-        <div class="state"><div class="num" style="color:var(--red)">64</div><p><b>Low</b>Red below your low threshold.</p></div>
-        <div class="state"><div class="num" style="color:var(--amber)">203</div><p><b>High</b>Amber above your high threshold.</p></div>
-        <div class="state"><div class="num" style="opacity:.45">98</div><p><b>Stale</b>Dimmed when no reading has arrived for 15 minutes.</p></div>
+      <p class="sub">There is no coloured dot to decode. The tray shows the value itself, and it stays readable whichever taskbar you use.</p>
+      <div class="specimen">
+        <div class="row strip dark" aria-hidden="true">
+          <div>112</div><div class="is-low">64</div><div class="is-high">203</div><div class="is-stale">98</div>
+        </div>
+        <div class="row strip light" aria-hidden="true">
+          <div>112</div><div class="is-low">64</div><div class="is-high">203</div><div class="is-stale">98</div>
+        </div>
+        <div class="row legend">
+          <div><b>In range</b><span>The taskbar's own text colour.</span></div>
+          <div><b>Low</b><span>Red below your low threshold.</span></div>
+          <div><b>High</b><span>Amber above your high threshold.</span></div>
+          <div><b>Stale</b><span>Dimmed after 15 minutes without a reading.</span></div>
+        </div>
       </div>
     </section>
 
-    <section>
+    <section class="block">
       <h2>Small on purpose</h2>
       <p class="sub">It does one job and stays out of the way.</p>
-      <div class="grid">
-        <div class="card"><h3>History on hover</h3><p>Value, trend arrow, change since the last reading, and a graph of the last 3, 6, 12 or 24 hours with your target range.</p></div>
-        <div class="card"><h3>Alerts when it matters</h3><p>A Windows notification when glucose leaves the target range or readings stop arriving. One switch turns them off.</p></div>
-        <div class="card"><h3>Barely there</h3><p>A single native executable using about 4 MB of private memory. It wakes up once per expected reading and sleeps the rest of the time.</p></div>
-        <div class="card"><h3>mg/dL and mmol/L</h3><p>Pick your unit and set your own low, high and urgent thresholds.</p></div>
-        <div class="card"><h3>Private</h3><p>It talks only to your Nightscout site. No account, no telemetry. Your API secret is stored encrypted by Windows.</p></div>
-        <div class="card"><h3>Open source</h3><p>MIT licensed and written in Rust. Read it, build it, change it.</p></div>
-      </div>
+      <dl class="facts">
+        <div><dt>History when you point at it</dt><dd>Value, trend arrow, change since the last reading, and a graph of the last 3, 6, 12 or 24 hours with your target range.</dd></div>
+        <div><dt>Alerts when it matters</dt><dd>A notification when glucose leaves the target range or readings stop arriving. One switch turns them off.</dd></div>
+        <div><dt>Barely there</dt><dd>One native program using about 4 MB of memory. It wakes up once per expected reading and sleeps the rest of the time.</dd></div>
+        <div><dt>mg/dL and mmol/L</dt><dd>Pick your unit and set your own low, high and urgent thresholds.</dd></div>
+        <div><dt>Private</dt><dd>It talks only to your Nightscout site. No account, no telemetry. Your API secret is stored encrypted on your computer.</dd></div>
+        <div><dt>Open source</dt><dd>MIT licensed and written in Rust. Read it, build it, change it.</dd></div>
+      </dl>
     </section>
 
-    <section id="setup">
-      <div class="split">
+    <section class="block" id="setup">
+      <div class="setup">
         <div>
           <h2>Running in a minute</h2>
           <p class="sub">There is nothing to install.</p>
@@ -212,12 +281,12 @@
             <li><div><b>Enter your Nightscout address</b><span>Add an API secret or a read-only access token if your site is not public, then test the connection.</span></div></li>
             <li><div><b>Pin the number</b><span>Windows hides new tray icons behind the ^ arrow. Drag the number onto the taskbar so it stays in view.</span></div></li>
           </ol>
-          <p class="note" id="mac"><b>On a Mac</b> the value and trend arrow appear as text in the menu bar. This version is new and not notarized by Apple yet, so macOS blocks it on first launch. Unzip it, move it to Applications, then run once in Terminal: <code>xattr -dr com.apple.quarantine "/Applications/Nightscout Glance.app"</code></p>
+          <p class="mac" id="mac"><b>On a Mac</b> the value and trend arrow appear as text in the menu bar. This version is new and not yet notarized by Apple, so macOS blocks it on first launch. Unzip it, move it to Applications, then run this once in Terminal: <code>xattr -dr com.apple.quarantine "/Applications/Nightscout Glance.app"</code></p>
         </div>
-        <picture>
-          <source srcset="img/settings-light.png" media="(prefers-color-scheme: light)">
-          <img src="img/settings-dark.png" width="540" height="694" loading="lazy" alt="The settings window with connection, glucose thresholds and behaviour options.">
-        </picture>
+        <div>
+          <img class="dark-only" src="img/settings-dark.png" width="540" height="694" loading="lazy" alt="The settings window with connection, glucose thresholds and behaviour options.">
+          <img class="light-only" src="img/settings-light.png" width="540" height="694" loading="lazy" alt="The settings window with connection, glucose thresholds and behaviour options.">
+        </div>
       </div>
     </section>
   </main>
@@ -227,5 +296,9 @@
     <p>An independent project, not affiliated with or endorsed by the Nightscout project. UI made with <a href="https://slint.dev">Slint</a>. &copy; 2026 Benedikt Reiser. <a href="https://github.com/burnedikt/nightscout-glance">Source on GitHub</a>.</p>
   </footer>
 </div>
+<script>
+  // Start the demo taskbar in the visitor's own colour scheme.
+  if (matchMedia("(prefers-color-scheme: light)").matches) document.getElementById("tb-light").checked = true;
+</script>
 </body>
 </html>
