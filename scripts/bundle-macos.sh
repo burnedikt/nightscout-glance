@@ -7,6 +7,9 @@ VERSION=$(grep -m1 '^version' Cargo.toml | sed 's/.*"\(.*\)".*/\1/')
 APP="dist/Nightscout Glance.app"
 BIN=nightscout-glance
 
+# Fat LTO fails to load bitcode for one of the macOS-only dependencies (muda).
+export CARGO_PROFILE_RELEASE_LTO=off
+
 rustup target add aarch64-apple-darwin x86_64-apple-darwin
 cargo build --release --locked --target aarch64-apple-darwin
 cargo build --release --locked --target x86_64-apple-darwin
