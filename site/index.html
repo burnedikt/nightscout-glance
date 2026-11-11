@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Nightscout Glance: glucose at a glance, right in your taskbar</title>
-<meta name="description" content="A tiny Windows tray app that shows the current glucose value from your Nightscout site as a number in the taskbar, with a history graph on hover. Free and open source.">
+<meta name="description" content="A tiny Windows tray app (and experimental macOS menu-bar app) that shows the current glucose value from your Nightscout site as a number in the taskbar, with a history graph on hover. Free and open source.">
 <meta property="og:title" content="Nightscout Glance">
 <meta property="og:description" content="Glucose at a glance, right in your Windows taskbar. Free and open source.">
 <meta property="og:type" content="website">
@@ -83,6 +83,10 @@
   .btn.primary { background: var(--green); color: var(--green-ink); border-color: transparent; }
   .btn.ghost:hover { background: var(--card); }
   .fine { color: var(--muted); font-size: 14px; margin-top: 16px; }
+  .fine a, .note a { color: inherit; }
+  .tag { font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+  .note { color: var(--muted); font-size: 15px; margin-top: 28px; max-width: 34em; }
+  .note code { font-size: 13px; overflow-wrap: anywhere; }
 
   /* Product shot: the real flyout above a drawn taskbar corner */
   .shot { position: relative; padding: 28px 28px 0; border-radius: 18px; background: linear-gradient(160deg, var(--bg-2), transparent 70%); border: 1px solid var(--line); overflow: hidden; }
@@ -156,9 +160,10 @@
         <p class="lede">Nightscout Glance puts the current reading from your Nightscout site into the Windows tray as a plain number. Hover over it and the last hours appear as a graph. Made by a parent who checks it all day.</p>
         <div class="cta">
           <a class="btn primary" href="https://github.com/burnedikt/nightscout-glance/releases/latest/download/NightscoutGlance.exe">Download for Windows</a>
+          <a class="btn ghost" href="https://github.com/burnedikt/nightscout-glance/releases/latest/download/NightscoutGlance-macos.zip">Download for macOS <span class="tag">beta</span></a>
           <a class="btn ghost" href="https://github.com/burnedikt/nightscout-glance">View source</a>
         </div>
-        <p class="fine">Free and open source. Windows 10 and 11. One 9 MB file, no installer.</p>
+        <p class="fine">Free and open source. Windows 10 and 11: one 9 MB file, no installer. macOS 11 or later, Apple Silicon and Intel: experimental, see <a href="#mac">the note below</a>.</p>
       </div>
       <div class="shot">
         <picture>
@@ -207,6 +212,7 @@
             <li><div><b>Enter your Nightscout address</b><span>Add an API secret or a read-only access token if your site is not public, then test the connection.</span></div></li>
             <li><div><b>Pin the number</b><span>Windows hides new tray icons behind the ^ arrow. Drag the number onto the taskbar so it stays in view.</span></div></li>
           </ol>
+          <p class="note" id="mac"><b>On a Mac</b> the value and trend arrow appear as text in the menu bar. This version is new and not notarized by Apple yet, so macOS blocks it on first launch. Unzip it, move it to Applications, then run once in Terminal: <code>xattr -dr com.apple.quarantine "/Applications/Nightscout Glance.app"</code></p>
         </div>
         <picture>
           <source srcset="img/settings-light.png" media="(prefers-color-scheme: light)">
