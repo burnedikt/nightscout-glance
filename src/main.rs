@@ -303,6 +303,7 @@ fn hover_tick() {
     .unwrap_or(false);
     if stop {
         HOVER_TIMER.with(|t| t.stop());
+        platform::release_focus();
     }
 }
 
@@ -312,6 +313,7 @@ fn hover_tick() {
 fn close_settings() {
     if let Some(win) = SETTINGS_WIN.with(|s| s.borrow_mut().take()) {
         let _ = win.hide();
+        platform::release_focus();
         // Drop outside of the window's own callback.
         Timer::single_shot(Duration::from_millis(50), move || drop(win));
     }

@@ -233,6 +233,9 @@ pub fn focus_window(window: &slint::Window) {
     }
 }
 
+/// Windows moves the focus on by itself when our windows close.
+pub fn release_focus() {}
+
 // ---------------------------------------------------------------------------------------
 // Tray: the value is drawn into the icon itself.
 
