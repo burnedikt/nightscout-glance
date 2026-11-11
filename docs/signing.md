@@ -30,7 +30,7 @@ Note for existing Mac users: the first signed version has a different signature 
 
 Result: the exe carries a valid signature from "SignPath Foundation". SmartScreen can still show a warning for a while after the first signed release, until the download builds reputation.
 
-SignPath Foundation signs open-source projects for free, at its own discretion. Its [conditions](https://signpath.org/terms) ask for an OSI licence, an actively maintained and already released project, "a certain verifiable reputation" for executables, multi-factor authentication for everyone with repository or SignPath access, and manual approval of every release. The code signing policy it requires is in the README.
+SignPath Foundation signs open-source projects for free, at its own discretion. Its [conditions](https://signpath.org/terms) ask for an OSI licence, an actively maintained and already released project, "a certain verifiable reputation" for executables, multi-factor authentication for everyone with repository or SignPath access, and manual approval of every release. It also requires a "Code signing policy" section on the project home page (README) and a link to it from the download page; add those before applying (see commit cb6116f for the wording that was removed).
 
 1. Enable two-factor authentication on the GitHub account if it is not on already.
 2. Apply at [signpath.org/apply](https://signpath.org/apply) with the repository URL.
