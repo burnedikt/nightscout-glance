@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nightscout Glance: glucose at a glance, right in your taskbar</title>
+<meta name="description" content="A tiny Windows tray app that shows the current glucose value from your Nightscout site as a number in the taskbar, with a history graph on hover. Free and open source.">
+<meta property="og:title" content="Nightscout Glance">
+<meta property="og:description" content="Glucose at a glance, right in your Windows taskbar. Free and open source.">
+<meta property="og:type" content="website">
+<link rel="icon" type="image/png" href="icon.png">
+<style>
+  :root {
+    --bg: #0c1222;
+    --bg-2: #121a30;
+    --card: #ffffff0a;
+    --line: #ffffff17;
+    --text: #f2f5fb;
+    --muted: #a7b1c8;
+    --green: #4ade80;
+    --green-ink: #06210f;
+    --amber: #ffc247;
+    --red: #ff6b6b;
+    --shadow: 0 30px 80px #0009;
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f5f7fb;
+      --bg-2: #e9eef7;
+      --card: #ffffff;
+      --line: #0c12221a;
+      --text: #10172a;
+      --muted: #56607a;
+      --green: #15803d;
+      --green-ink: #ffffff;
+      --amber: #9a6000;
+      --red: #c42b1c;
+      --shadow: 0 30px 70px #1b2a5a33;
+      color-scheme: light;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 17px/1.6 "Segoe UI Variable Text", "Segoe UI", Inter, system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; }
+  .wrap { width: min(1080px, 100% - 40px); margin-inline: auto; }
+
+  header { display: flex; align-items: center; justify-content: space-between; padding: 22px 0; }
+  .brand { display: flex; align-items: center; gap: 12px; font-weight: 600; text-decoration: none; }
+  .brand img { width: 34px; height: 34px; }
+  nav a { color: var(--muted); text-decoration: none; font-size: 15px; margin-left: 22px; }
+  nav a:hover { color: var(--text); }
+
+  .hero { display: grid; grid-template-columns: 1.05fr 1fr; gap: 56px; align-items: center; padding: 56px 0 88px; }
+  h1 {
+    font-family: "Segoe UI Variable Display", "Segoe UI", Inter, system-ui, sans-serif;
+    font-size: clamp(38px, 5.4vw, 60px); line-height: 1.06; letter-spacing: -0.02em; margin: 0 0 20px; font-weight: 600;
+    text-wrap: balance;
+  }
+  h1 em { font-style: normal; color: var(--green); }
+  .lede { color: var(--muted); font-size: 19px; max-width: 34em; margin: 0 0 32px; }
+  .cta { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 10px; padding: 13px 22px; border-radius: 10px;
+    font-weight: 600; text-decoration: none; border: 1px solid var(--line); transition: transform .12s, background .12s;
+  }
+  .btn:hover { transform: translateY(-1px); }
+  .btn.primary { background: var(--green); color: var(--green-ink); border-color: transparent; }
+  .btn.ghost:hover { background: var(--card); }
+  .fine { color: var(--muted); font-size: 14px; margin-top: 16px; }
+
+  /* Product shot: the real flyout above a drawn taskbar corner */
+  .shot { position: relative; padding: 28px 28px 0; border-radius: 18px; background: linear-gradient(160deg, var(--bg-2), transparent 70%); border: 1px solid var(--line); overflow: hidden; }
+  .shot picture img { display: block; width: min(388px, 100%); margin-left: auto; border-radius: 9px; box-shadow: var(--shadow); border: 1px solid var(--line); }
+  .taskbar {
+    margin: 14px -28px 0; padding: 0 22px; height: 50px; display: flex; align-items: center; justify-content: flex-end; gap: 18px;
+    background: #1c1c1cdd; border-top: 1px solid #ffffff14; color: #fff; font-size: 12px;
+  }
+  .taskbar .glyph { width: 16px; height: 16px; border-radius: 4px; background: #ffffff2e; }
+  .taskbar .value { font-weight: 600; font-size: 15px; padding: 5px 7px; border-radius: 5px; background: #ffffff1c; font-variant-numeric: tabular-nums; }
+  .taskbar .clock { text-align: right; line-height: 1.25; }
+  @media (prefers-color-scheme: light) {
+    .taskbar { background: #eef1f6; border-top-color: #0000001a; color: #1a1a1a; }
+    .taskbar .glyph { background: #00000026; }
+    .taskbar .value { background: #00000012; }
+  }
+
+  section { padding: 72px 0; border-top: 1px solid var(--line); }
+  h2 { font-family: "Segoe UI Variable Display", "Segoe UI", Inter, system-ui, sans-serif; font-size: clamp(26px, 3.2vw, 34px); letter-spacing: -0.01em; margin: 0 0 12px; font-weight: 600; text-wrap: balance; }
+  .sub { color: var(--muted); max-width: 40em; margin: 0 0 40px; }
+
+  .states { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .state { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 22px; }
+  .state .num { font-size: 40px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; margin-bottom: 12px; }
+  .state p { margin: 0; color: var(--muted); font-size: 15px; }
+  .state b { display: block; color: var(--text); font-weight: 600; margin-bottom: 2px; }
+
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 24px; }
+  .card h3 { margin: 0 0 6px; font-size: 18px; font-weight: 600; }
+  .card p { margin: 0; color: var(--muted); font-size: 15.5px; }
+
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; }
+  .split picture img { width: 100%; max-width: 540px; border-radius: 12px; border: 1px solid var(--line); box-shadow: var(--shadow); display: block; }
+  ol.steps { list-style: none; counter-reset: s; padding: 0; margin: 0; display: grid; gap: 22px; }
+  ol.steps li { counter-increment: s; display: grid; grid-template-columns: 38px 1fr; gap: 14px; }
+  ol.steps li::before {
+    content: counter(s); width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
+    font-weight: 600; font-size: 15px; color: var(--green); border: 1px solid var(--line); background: var(--card);
+  }
+  ol.steps b { display: block; }
+  ol.steps span { color: var(--muted); font-size: 15.5px; }
+
+  footer { border-top: 1px solid var(--line); padding: 36px 0 56px; color: var(--muted); font-size: 14px; }
+  footer p { max-width: 62em; margin: 0 0 10px; }
+
+  @media (max-width: 860px) {
+    .hero, .split { grid-template-columns: 1fr; gap: 40px; }
+    .hero { padding: 28px 0 64px; }
+    .states { grid-template-columns: repeat(2, 1fr); }
+    .grid { grid-template-columns: 1fr; }
+    nav a:first-child { display: none; }
+    .shot picture img { margin-inline: auto; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="brand" href="#"><img src="icon.png" alt="">Nightscout Glance</a>
+    <nav>
+      <a href="#setup">Setup</a>
+      <a href="https://github.com/burnedikt/nightscout-glance">GitHub</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="hero">
+      <div>
+        <h1>Glucose <em>at a glance</em>, right in your taskbar.</h1>
+        <p class="lede">Nightscout Glance puts the current reading from your Nightscout site into the Windows tray as a plain number. Hover over it and the last hours appear as a graph. Made by a parent who checks it all day.</p>
+        <div class="cta">
+          <a class="btn primary" href="https://github.com/burnedikt/nightscout-glance/releases/latest/download/NightscoutGlance.exe">Download for Windows</a>
+          <a class="btn ghost" href="https://github.com/burnedikt/nightscout-glance">View source</a>
+        </div>
+        <p class="fine">Free and open source. Windows 10 and 11. One 9 MB file, no installer.</p>
+      </div>
+      <div class="shot">
+        <picture>
+          <source srcset="img/flyout-light.png" media="(prefers-color-scheme: light)">
+          <img src="img/flyout-dark.png" width="388" height="292" alt="The hover flyout: current value 164 mg/dL with a trend arrow, change since the last reading, and a three-hour graph with the target range shaded.">
+        </picture>
+        <div class="taskbar" aria-hidden="true">
+          <span class="value">164</span>
+          <span class="glyph"></span><span class="glyph"></span><span class="glyph"></span>
+          <span class="clock">14:36<br>11.11.2026</span>
+        </div>
+      </div>
+    </div>
+
+    <section>
+      <h2>The number is the icon</h2>
+      <p class="sub">No coloured blob to decode. The tray shows the value itself, redrawn for light and dark taskbars so you can always read it.</p>
+      <div class="states">
+        <div class="state"><div class="num">112</div><p><b>In range</b>Plain taskbar text colour.</p></div>
+        <div class="state"><div class="num" style="color:var(--red)">64</div><p><b>Low</b>Red below your low threshold.</p></div>
+        <div class="state"><div class="num" style="color:var(--amber)">203</div><p><b>High</b>Amber above your high threshold.</p></div>
+        <div class="state"><div class="num" style="opacity:.45">98</div><p><b>Stale</b>Dimmed when no reading has arrived for 15 minutes.</p></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Small on purpose</h2>
+      <p class="sub">It does one job and stays out of the way.</p>
+      <div class="grid">
+        <div class="card"><h3>History on hover</h3><p>Value, trend arrow, change since the last reading, and a graph of the last 3, 6, 12 or 24 hours with your target range.</p></div>
+        <div class="card"><h3>Alerts when it matters</h3><p>A Windows notification when glucose leaves the target range or readings stop arriving. One switch turns them off.</p></div>
+        <div class="card"><h3>Barely there</h3><p>A single native executable using about 4 MB of private memory. It wakes up once per expected reading and sleeps the rest of the time.</p></div>
+        <div class="card"><h3>mg/dL and mmol/L</h3><p>Pick your unit and set your own low, high and urgent thresholds.</p></div>
+        <div class="card"><h3>Private</h3><p>It talks only to your Nightscout site. No account, no telemetry. Your API secret is stored encrypted by Windows.</p></div>
+        <div class="card"><h3>Open source</h3><p>MIT licensed and written in Rust. Read it, build it, change it.</p></div>
+      </div>
+    </section>
+
+    <section id="setup">
+      <div class="split">
+        <div>
+          <h2>Running in a minute</h2>
+          <p class="sub">There is nothing to install.</p>
+          <ol class="steps">
+            <li><div><b>Download and run</b><span>Put <code>NightscoutGlance.exe</code> anywhere and start it.</span></div></li>
+            <li><div><b>Enter your Nightscout address</b><span>Add an API secret or a read-only access token if your site is not public, then test the connection.</span></div></li>
+            <li><div><b>Pin the number</b><span>Windows hides new tray icons behind the ^ arrow. Drag the number onto the taskbar so it stays in view.</span></div></li>
+          </ol>
+        </div>
+        <picture>
+          <source srcset="img/settings-light.png" media="(prefers-color-scheme: light)">
+          <img src="img/settings-dark.png" width="540" height="694" loading="lazy" alt="The settings window with connection, glucose thresholds and behaviour options.">
+        </picture>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p><b>Not a medical device.</b> Nightscout Glance is a convenience display. Do not use it to make treatment decisions; always confirm with your CGM receiver or a blood glucose meter.</p>
+    <p>An independent project, not affiliated with or endorsed by the Nightscout project. UI made with <a href="https://slint.dev">Slint</a>. &copy; 2026 Benedikt Reiser. <a href="https://github.com/burnedikt/nightscout-glance">Source on GitHub</a>.</p>
+  </footer>
+</div>
+</body>
+</html>

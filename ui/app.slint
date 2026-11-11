@@ -1,0 +1,486 @@
+import { Button, LineEdit, ComboBox, Switch, Palette } from "std-widgets.slint";
+
+export struct AxisLabel {
+    pos: length,
+    text: string,
+}
+
+// ---------------------------------------------------------------------------------------
+// Hover flyout
+
+component Chip inherits Rectangle {
+    in property <string> label;
+    in property <bool> selected;
+    in property <bool> dark;
+    callback clicked();
+    width: 42px;
+    height: 26px;
+    border-radius: 13px;
+    background: selected ? (dark ? #ffffff26 : #00000021) : ta.has-hover ? (dark ? #ffffff12 : #0000000a) : transparent;
+    animate background { duration: 120ms; }
+    Text {
+        text: root.label;
+        font-size: 12px;
+        font-weight: root.selected ? 600 : 400;
+        color: root.dark ? (root.selected ? #ffffff : #ffffffa6) : (root.selected ? #1a1a1a : #000000a6);
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    ta := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+component IconButton inherits Rectangle {
+    in property <string> glyph;
+    in property <bool> dark;
+    callback clicked();
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    background: ta.has-hover ? (dark ? #ffffff14 : #0000000d) : transparent;
+    Text {
+        text: root.glyph;
+        font-family: "Segoe Fluent Icons";
+        font-size: 15px;
+        color: root.dark ? #ffffffc0 : #000000b0;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    ta := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+export component Flyout inherits Window {
+    in property <bool> dark: true;
+    in property <string> value: "--";
+    in property <string> unit: "mg/dL";
+    in property <string> delta;
+    in property <string> ago;
+    in property <color> accent: #ffffff;
+    in property <bool> stale;
+    in property <image> arrow;
+    in property <image> graph;
+    in property <[AxisLabel]> x-labels;
+    in property <[AxisLabel]> y-labels;
+    in property <string> message;
+    in property <string> footer;
+    in property <bool> footer-warning;
+    in property <int> range-index;
+    // Flipped by the host each time the native window is shown. It changes an invisible
+    // full-size layer, which makes the renderer repaint the whole window instead of only
+    // the regions that changed while it was hidden.
+    in property <bool> repaint-tick;
+    out property <length> graph-w: 326px;
+    out property <length> graph-h: 136px;
+    callback range-selected(int);
+    callback open-settings();
+    callback open-site();
+
+    property <color> fg: dark ? #ffffff : #1a1a1a;
+    property <color> fg2: dark ? #ffffff9e : #0000009e;
+    property <color> warn: dark ? #ffc247 : #9a6000;
+    property <length> gx: 20px;
+    property <length> gy: 88px;
+
+    title: "Nightscout Glance";
+    no-frame: true;
+    always-on-top: true;
+    width: 388px;
+    height: 292px;
+    background: dark ? #202020 : #f7f7f7;
+    default-font-family: "Segoe UI Variable Text";
+
+    // Header: value, trend, delta
+    HorizontalLayout {
+        x: root.gx;
+        y: 12px;
+        height: 64px;
+        width: 290px;
+        alignment: start;
+        spacing: 10px;
+        Text {
+            text: root.value;
+            font-family: "Segoe UI Variable Display";
+            font-size: 48px;
+            font-weight: 600;
+            color: root.stale ? root.fg2 : root.accent;
+            vertical-alignment: center;
+        }
+        VerticalLayout {
+            alignment: center;
+            Image {
+                source: root.arrow;
+                width: 30px;
+                height: 30px;
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            spacing: 2px;
+            Text {
+                text: root.delta;
+                font-size: 13px;
+                font-weight: 600;
+                color: root.fg;
+            }
+            Text {
+                text: root.ago;
+                font-size: 12px;
+                color: root.stale ? root.warn : root.fg2;
+            }
+        }
+    }
+
+    HorizontalLayout {
+        x: root.width - 16px - self.width;
+        y: 14px;
+        width: 62px;
+        height: 30px;
+        spacing: 2px;
+        IconButton {
+            glyph: "\u{E8A7}";
+            dark: root.dark;
+            clicked => { root.open-site(); }
+        }
+        IconButton {
+            glyph: "\u{E713}";
+            dark: root.dark;
+            clicked => { root.open-settings(); }
+        }
+    }
+
+    // Graph
+    Image {
+        x: root.gx;
+        y: root.gy;
+        width: root.graph-w;
+        height: root.graph-h;
+        source: root.graph;
+    }
+    for l in root.y-labels: Text {
+        x: root.gx + root.graph-w + 6px;
+        y: root.gy + l.pos - 8px;
+        height: 16px;
+        text: l.text;
+        font-size: 11px;
+        color: root.fg2;
+        vertical-alignment: center;
+    }
+    for l in root.x-labels: Text {
+        x: root.gx + l.pos - 24px;
+        y: root.gy + root.graph-h + 4px;
+        width: 48px;
+        text: l.text;
+        font-size: 11px;
+        color: root.fg2;
+        horizontal-alignment: center;
+    }
+    if root.message != "": Text {
+        x: root.gx;
+        y: root.gy;
+        width: root.graph-w;
+        height: root.graph-h;
+        text: root.message;
+        font-size: 13px;
+        color: root.fg2;
+        wrap: word-wrap;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+
+    // Footer: range chips + status
+    HorizontalLayout {
+        x: 16px;
+        y: root.height - 14px - 26px;
+        height: 26px;
+        width: 180px;
+        alignment: start;
+        spacing: 2px;
+        for r[i] in ["3h", "6h", "12h", "24h"]: Chip {
+            label: r;
+            dark: root.dark;
+            selected: i == root.range-index;
+            clicked => { root.range-selected(i); }
+        }
+    }
+    Text {
+        x: 200px;
+        width: root.width - 200px - 20px;
+        y: root.height - 14px - 26px;
+        height: 26px;
+        text: root.footer;
+        font-size: 11px;
+        color: root.footer-warning ? root.warn : root.fg2;
+        horizontal-alignment: right;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    Rectangle {
+        background: root.repaint-tick ? #00000001 : #00000002;
+    }
+}
+
+// ---------------------------------------------------------------------------------------
+// Settings
+
+component Card inherits Rectangle {
+    in property <string> title;
+    property <bool> dark: Palette.color-scheme == ColorScheme.dark;
+    background: dark ? #ffffff0d : #ffffffc8;
+    border-radius: 8px;
+    border-width: 1px;
+    border-color: dark ? #ffffff14 : #00000012;
+    VerticalLayout {
+        padding: 16px;
+        padding-top: 14px;
+        spacing: 12px;
+        Text {
+            text: root.title;
+            font-size: 14px;
+            font-weight: 600;
+            color: Palette.foreground;
+        }
+        @children
+    }
+}
+
+component Field inherits VerticalLayout {
+    in property <string> label;
+    spacing: 5px;
+    Text {
+        text: root.label;
+        font-size: 12px;
+        color: Palette.foreground.transparentize(0.35);
+    }
+    @children
+}
+
+component ToggleRow inherits HorizontalLayout {
+    in property <string> title;
+    in property <string> description;
+    in-out property <bool> checked <=> sw.checked;
+    spacing: 16px;
+    VerticalLayout {
+        alignment: center;
+        spacing: 2px;
+        Text {
+            text: root.title;
+            font-size: 13px;
+            color: Palette.foreground;
+        }
+        Text {
+            text: root.description;
+            font-size: 12px;
+            color: Palette.foreground.transparentize(0.4);
+            wrap: word-wrap;
+        }
+    }
+    VerticalLayout {
+        alignment: center;
+        sw := Switch { }
+    }
+}
+
+export component SettingsWindow inherits Window {
+    in-out property <string> url;
+    in-out property <string> secret;
+    in-out property <int> unit-index;
+    in-out property <string> urgent-low;
+    in-out property <string> low;
+    in-out property <string> high;
+    in-out property <string> urgent-high;
+    in-out property <bool> alerts;
+    in-out property <bool> autostart;
+    // 0 idle, 1 testing, 2 ok, 3 failed
+    in property <int> test-state;
+    in property <string> test-message;
+    in property <string> error;
+    in property <string> version;
+    callback save();
+    callback cancel();
+    callback test();
+    callback units-changed(int);
+    public function set-dark(d: bool) {
+        Palette.color-scheme = d ? ColorScheme.dark : ColorScheme.light;
+    }
+
+    property <bool> dark: Palette.color-scheme == ColorScheme.dark;
+
+    title: "Nightscout Glance Settings";
+    icon: @image-url("../assets/icon.png");
+    background: dark ? #202020 : #f3f3f3;
+    default-font-family: "Segoe UI Variable Text";
+    width: 540px;
+
+    VerticalLayout {
+        VerticalLayout {
+            padding: 24px;
+            padding-top: 20px;
+            padding-bottom: 16px;
+            spacing: 12px;
+
+            HorizontalLayout {
+                spacing: 14px;
+                padding-bottom: 4px;
+                Image {
+                    source: @image-url("../assets/icon.png");
+                    width: 44px;
+                    height: 44px;
+                }
+                VerticalLayout {
+                    alignment: center;
+                    spacing: 1px;
+                    Text {
+                        text: "Nightscout Glance";
+                        font-family: "Segoe UI Variable Display";
+                        font-size: 20px;
+                        font-weight: 600;
+                        color: Palette.foreground;
+                    }
+                    Text {
+                        text: "Glucose at a glance, right in your taskbar.";
+                        font-size: 12px;
+                        color: Palette.foreground.transparentize(0.4);
+                    }
+                }
+            }
+
+            Card {
+                title: "Connection";
+                Field {
+                    label: "Nightscout address";
+                    LineEdit {
+                        text <=> root.url;
+                        placeholder-text: "https://my-nightscout.example.com";
+                    }
+                }
+                Field {
+                    label: "API secret or access token (leave empty if your site is public)";
+                    LineEdit {
+                        text <=> root.secret;
+                        input-type: password;
+                    }
+                }
+                HorizontalLayout {
+                    spacing: 12px;
+                    height: 32px;
+                    Button {
+                        text: root.test-state == 1 ? "Testing\u{2026}" : "Test connection";
+                        enabled: root.test-state != 1 && root.url != "";
+                        clicked => { root.test(); }
+                    }
+                    Text {
+                        horizontal-stretch: 1;
+                        text: root.test-message;
+                        font-size: 12px;
+                        wrap: word-wrap;
+                        vertical-alignment: center;
+                        color: root.test-state == 3 ? (root.dark ? #ff8a8a : #c42b1c) : root.test-state == 2 ? (root.dark ? #6ee7a0 : #0f7b3c) : Palette.foreground.transparentize(0.4);
+                    }
+                }
+            }
+
+            Card {
+                title: "Glucose";
+                HorizontalLayout {
+                    spacing: 12px;
+                    Field {
+                        label: "Units";
+                        ComboBox {
+                            min-width: 110px;
+                            model: ["mg/dL", "mmol/L"];
+                            current-index <=> root.unit-index;
+                            selected => { root.units-changed(self.current-index); }
+                        }
+                    }
+                    Field {
+                        label: "Urgent low";
+                        LineEdit {
+                            min-width: 56px;
+                            text <=> root.urgent-low;
+                            input-type: decimal;
+                        }
+                    }
+                    Field {
+                        label: "Low";
+                        LineEdit {
+                            min-width: 56px;
+                            text <=> root.low;
+                            input-type: decimal;
+                        }
+                    }
+                    Field {
+                        label: "High";
+                        LineEdit {
+                            min-width: 56px;
+                            text <=> root.high;
+                            input-type: decimal;
+                        }
+                    }
+                    Field {
+                        label: "Urgent high";
+                        LineEdit {
+                            min-width: 56px;
+                            text <=> root.urgent-high;
+                            input-type: decimal;
+                        }
+                    }
+                }
+                Text {
+                    text: "Values between Low and High are shown as in range. The tray number turns red below Low and amber above High.";
+                    font-size: 12px;
+                    wrap: word-wrap;
+                    color: Palette.foreground.transparentize(0.4);
+                }
+            }
+
+            Card {
+                title: "Behavior";
+                ToggleRow {
+                    title: "Notifications";
+                    description: "Alert me when glucose goes out of range or readings stop arriving.";
+                    checked <=> root.alerts;
+                }
+                ToggleRow {
+                    title: "Start with Windows";
+                    description: "Launch Nightscout Glance automatically when I sign in.";
+                    checked <=> root.autostart;
+                }
+            }
+        }
+
+        Rectangle {
+            background: root.dark ? #1a1a1a : #ebebeb;
+            HorizontalLayout {
+                padding: 16px;
+                padding-left: 24px;
+                padding-right: 24px;
+                spacing: 8px;
+                Text {
+                    horizontal-stretch: 1;
+                    text: root.error != "" ? root.error : root.version;
+                    font-size: 12px;
+                    wrap: word-wrap;
+                    vertical-alignment: center;
+                    color: root.error != "" ? (root.dark ? #ff8a8a : #c42b1c) : Palette.foreground.transparentize(0.5);
+                }
+                Button {
+                    text: "Cancel";
+                    min-width: 96px;
+                    clicked => { root.cancel(); }
+                }
+                Button {
+                    text: "Save";
+                    primary: true;
+                    min-width: 96px;
+                    clicked => { root.save(); }
+                }
+            }
+        }
+    }
+}
