@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 16 16" role="img"><defs></defs>
+      <rect width="16" height="16" rx="3.68" fill="#192844"/>
+      <clipPath id="clip"><rect width="16" height="16" rx="3.68"/></clipPath>
+      <g clip-path="url(#clip)">
+      <path d="M 2.0 12.1 C 3.7 10.8, 4.9 9.04, 6.37 9.45 C 7.82 9.86, 8.72 9.36, 9.74 8.03 C 10.74 6.78, 11.7 5.65, 12.55 4.98" fill="none" stroke="#4ADE80" stroke-width="1.84" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="12.55" cy="4.98" r="2.25" fill="white"/>
+      <circle cx="12.55" cy="4.98" r="1.08" fill="#4ADE80"/>
+      </g></svg>

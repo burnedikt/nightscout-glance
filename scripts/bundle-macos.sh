@@ -23,11 +23,11 @@ lipo -create -output "$APP/Contents/MacOS/$BIN" \
 # App icon
 ICONSET=dist/AppIcon.iconset
 mkdir -p "$ICONSET"
-for size in 16 32 128; do
-  sips -z $size $size assets/icon.png --out "$ICONSET/icon_${size}x${size}.png" >/dev/null
-  sips -z $((size * 2)) $((size * 2)) assets/icon.png --out "$ICONSET/icon_${size}x${size}@2x.png" >/dev/null
+SRC=assets/brand/icon-macos-1024.png
+for size in 16 32 128 256 512; do
+  sips -z $size $size "$SRC" --out "$ICONSET/icon_${size}x${size}.png" >/dev/null
+  sips -z $((size * 2)) $((size * 2)) "$SRC" --out "$ICONSET/icon_${size}x${size}@2x.png" >/dev/null
 done
-sips -z 256 256 assets/icon.png --out "$ICONSET/icon_256x256.png" >/dev/null
 iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
 rm -rf "$ICONSET"
 

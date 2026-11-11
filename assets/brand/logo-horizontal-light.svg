@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="850" height="160" viewBox="0 0 850 160" role="img"><defs></defs>
+       <svg x="22" y="20" width="120" height="120" viewBox="0 0 1024 1024" overflow="visible"><defs>
+<linearGradient id="navy" x1="0%" y1="0%" x2="100%" y2="100%">
+  <stop offset="0%" stop-color="#24345C"/><stop offset="53%" stop-color="#17233E"/><stop offset="100%" stop-color="#0E1426"/>
+</linearGradient>
+</defs>
+    <rect x="0" y="0" width="1024" height="1024" rx="235" fill="url(#navy)"/>
+    <clipPath id="cornerClip"><rect width="1024" height="1024" rx="235"/></clipPath>
+    <g clip-path="url(#cornerClip)">
+      <rect x="0" y="353" width="1024" height="307" fill="#4ADE80" opacity="0.105"/>
+      <path d="M0 353H1024 M0 660H1024" stroke="#D8FFF0" stroke-width="3" opacity="0.065" />
+      <path d="M 159 747 C 245 690, 324 594, 413 614 C 511 638, 548 596, 610 518 C 670 444, 735 354, 804 350" fill="none" stroke="#4ADE80" stroke-width="68" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="804" cy="350" r="82" fill="white"/>
+      <circle cx="804" cy="350" r="43" fill="#4ADE80"/>
+    </g>
+    <rect x="1.5" y="1.5" width="1021" height="1021" rx="233.5" stroke="white" stroke-width="3" stroke-opacity="0.09" fill="none"/>
+    </svg>
+       <text x="178" y="103" font-family="Inter, Segoe UI Variable, sans-serif" font-weight="600" font-size="64" letter-spacing="-2.0" fill="#1A1A1A">Nightscout Glance</text>
+    </svg>

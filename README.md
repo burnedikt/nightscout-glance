@@ -1,3 +1,5 @@
+![Nightscout Glance](assets/brand/banner.png)
+
 # Nightscout Glance
 
 Glucose at a glance, right in your Windows taskbar (and, experimentally, your macOS menu bar).
@@ -66,7 +68,7 @@ Useful flags while developing:
 | `src/main.rs` | App state, flyout and settings window logic |
 | `ui/app.slint` | UI (Slint) |
 | `site/` | Landing page |
-| `tools/gen-icon` | Generates the placeholder app icon |
+| `assets/brand/` | Icon and brand image set |
 
 ## Not a medical device
 

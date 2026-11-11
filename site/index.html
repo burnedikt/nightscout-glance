@@ -8,7 +8,13 @@
 <meta property="og:title" content="Nightscout Glance">
 <meta property="og:description" content="Glucose at a glance, right in your Windows taskbar. Free and open source.">
 <meta property="og:type" content="website">
-<link rel="icon" type="image/png" href="icon.png">
+<meta property="og:url" content="https://glance.burnedikt.com/">
+<meta property="og:image" content="https://glance.burnedikt.com/og-image.png">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="640">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="apple-touch-icon" href="icon.png">
 <style>
   :root {
     --bg: #0c1222;
@@ -22,6 +28,7 @@
     --amber: #ffc247;
     --red: #ff6b6b;
     --shadow: 0 30px 80px #0009;
+    --hero: url(hero-bg-dark.png);
     color-scheme: dark;
   }
   @media (prefers-color-scheme: light) {
@@ -37,6 +44,7 @@
       --amber: #9a6000;
       --red: #c42b1c;
       --shadow: 0 30px 70px #1b2a5a33;
+      --hero: url(hero-bg-light.png);
       color-scheme: light;
     }
   }
@@ -44,7 +52,7 @@
   html { scroll-behavior: smooth; }
   body {
     margin: 0;
-    background: var(--bg);
+    background: linear-gradient(to bottom, transparent 420px, var(--bg) 760px), var(--hero) top center / max(100%, 1400px) auto no-repeat, var(--bg);
     color: var(--text);
     font: 17px/1.6 "Segoe UI Variable Text", "Segoe UI", Inter, system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -134,7 +142,7 @@
 <body>
 <div class="wrap">
   <header>
-    <a class="brand" href="#"><img src="icon.png" alt="">Nightscout Glance</a>
+    <a class="brand" href="#"><img src="favicon.svg" alt="">Nightscout Glance</a>
     <nav>
       <a href="#setup">Setup</a>
       <a href="https://github.com/burnedikt/nightscout-glance">GitHub</a>
