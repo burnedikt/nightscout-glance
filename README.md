@@ -29,7 +29,7 @@ Settings live in `%APPDATA%\Nightscout Glance\settings.json`.
 
 ### macOS (experimental)
 
-The macOS version shows the value and trend arrow as text in the menu bar, with the same hover flyout and settings window. It compiles and is packaged by CI, but it has not been tested on a real Mac yet, so expect rough edges and please report them.
+The macOS version shows the value and trend arrow as text in the menu bar, with the same hover flyout and settings window. Right-click the value for the menu. It has had a first round of testing on an Apple Silicon Mac, but it is still new, so expect rough edges and please report them.
 
 1. Download `NightscoutGlance-macos.zip` (from a release if one includes it, otherwise from the latest [CI run](https://github.com/burnedikt/nightscout-glance/actions/workflows/ci.yml) artifacts) and unzip it.
 2. Move `Nightscout Glance.app` to Applications.
@@ -39,7 +39,9 @@ The macOS version shows the value and trend arrow as text in the menu bar, with 
    xattr -dr com.apple.quarantine "/Applications/Nightscout Glance.app"
    ```
 
-The API secret is stored in the login Keychain. Settings live in `~/Library/Application Support/Nightscout Glance/settings.json`.
+The API secret is stored in the login Keychain. Because the app is not signed with a developer certificate, macOS asks once after every update whether the new version may read it; choose **Always Allow**. Settings live in `~/Library/Application Support/Nightscout Glance/settings.json`.
+
+"Start at login" remembers where the app is, so move it to Applications before turning it on.
 
 ## Build from source
 

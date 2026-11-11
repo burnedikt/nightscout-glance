@@ -39,5 +39,7 @@ pub struct TrayState<'a> {
     /// `None` when there is no reading at all.
     pub zone: Option<Zone>,
     pub stale: bool,
+    /// Tooltip text (Windows; on macOS the flyout opens on hover instead).
+    #[cfg_attr(target_os = "macos", allow(dead_code))]
     pub tip: &'a str,
 }

@@ -40,7 +40,11 @@ ProductName = "Nightscout Glance"
 FileDescription = "Nightscout Glance"
 
 [target.'cfg(target_os = "macos")'.dependencies]
-tray-icon = { version = "0.21", default-features = false }
+# Keep tray-icon on the same muda as Slint's winit backend: two copies of muda register the
+# same Objective-C classes, which breaks LTO and lets one copy run the other's methods.
+tray-icon = { version = "0.24", default-features = false }
+# For the winit event loop builder (activation behaviour of a menu-bar app).
+slint = { version = "1.18", default-features = false, features = ["unstable-winit-030"] }
 objc2 = "0.6"
 objc2-foundation = "0.3"
 objc2-app-kit = "0.3"
