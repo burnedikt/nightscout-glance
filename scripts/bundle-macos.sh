@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # Builds a universal (Apple Silicon + Intel) "Nightscout Glance.app" and zips it.
 # Run on macOS from the repository root. Output: dist/NightscoutGlance-macos.zip
+#
+# Signing (all optional; without them the app gets an ad-hoc signature):
+#   MACOS_SIGN_IDENTITY  "Developer ID Application: Name (TEAMID)", must be in the keychain
+#   APPLE_API_KEY_PATH, APPLE_API_KEY_ID, APPLE_API_ISSUER_ID
+#                        App Store Connect API key; when set, the app is notarized and stapled
 set -euo pipefail
 
 VERSION=$(grep -m1 '^version' Cargo.toml | sed 's/.*"\(.*\)".*/\1/')
@@ -51,7 +56,25 @@ cat > "$APP/Contents/Info.plist" <<EOF
 </plist>
 EOF
 
-# Ad-hoc signature: enough to run locally, not notarized.
-codesign --force --deep --sign - "$APP"
-ditto -c -k --keepParent "$APP" dist/NightscoutGlance-macos.zip
-echo "Built dist/NightscoutGlance-macos.zip ($VERSION)"
+ZIP=dist/NightscoutGlance-macos.zip
+if [ -n "${MACOS_SIGN_IDENTITY:-}" ]; then
+  # Developer ID signature with the hardened runtime, as notarization requires.
+  codesign --force --options runtime --timestamp --sign "$MACOS_SIGN_IDENTITY" "$APP"
+  codesign --verify --strict --verbose=2 "$APP"
+  SIGNED="signed"
+else
+  # Ad-hoc signature: enough to run locally, not notarized.
+  codesign --force --deep --sign - "$APP"
+  SIGNED="ad-hoc signed"
+fi
+ditto -c -k --keepParent "$APP" "$ZIP"
+
+if [ -n "${MACOS_SIGN_IDENTITY:-}" ] && [ -n "${APPLE_API_KEY_PATH:-}" ]; then
+  xcrun notarytool submit "$ZIP" --wait     --key "$APPLE_API_KEY_PATH" --key-id "$APPLE_API_KEY_ID" --issuer "$APPLE_API_ISSUER_ID"
+  # Attach the ticket so the app opens without a network check, then zip the stapled app.
+  xcrun stapler staple "$APP"
+  rm "$ZIP"
+  ditto -c -k --keepParent "$APP" "$ZIP"
+  SIGNED="signed and notarized"
+fi
+echo "Built $ZIP ($VERSION, $SIGNED)"
