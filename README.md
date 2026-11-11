@@ -1,6 +1,6 @@
 # Nightscout Glance
 
-Glucose at a glance, right in your Windows taskbar.
+Glucose at a glance, right in your Windows taskbar (and, experimentally, your macOS menu bar).
 
 Nightscout Glance sits in the system tray and shows the current glucose value from your [Nightscout](https://nightscout.github.io/) site as a number. Hover over it for a history graph.
 
@@ -25,15 +25,29 @@ Right-click the tray number for the menu (open Nightscout, refresh, settings, qu
 
 Settings live in `%APPDATA%\Nightscout Glance\settings.json`.
 
+### macOS (experimental)
+
+The macOS version shows the value and trend arrow as text in the menu bar, with the same hover flyout and settings window. It compiles and is packaged by CI, but it has not been tested on a real Mac yet, so expect rough edges and please report them.
+
+1. Download `NightscoutGlance-macos.zip` (from a release if one includes it, otherwise from the latest [CI run](https://github.com/burnedikt/nightscout-glance/actions/workflows/ci.yml) artifacts) and unzip it.
+2. Move `Nightscout Glance.app` to Applications.
+3. The app is not notarized, so macOS blocks it on first launch. Clear the download flag once:
+
+   ```
+   xattr -dr com.apple.quarantine "/Applications/Nightscout Glance.app"
+   ```
+
+The API secret is stored in the login Keychain. Settings live in `~/Library/Application Support/Nightscout Glance/settings.json`.
+
 ## Build from source
 
-Requires [Rust](https://rustup.rs/) with the MSVC toolchain.
+Requires [Rust](https://rustup.rs/) (on Windows with the MSVC toolchain).
 
 ```
 cargo build --release
 ```
 
-The binary is `target/release/nightscout-glance.exe`.
+The binary is `target/release/nightscout-glance.exe`. On macOS, `bash scripts/bundle-macos.sh` builds a universal `Nightscout Glance.app` into `dist/`.
 
 Useful flags while developing:
 
@@ -46,8 +60,9 @@ Useful flags while developing:
 | --- | --- |
 | `src/nightscout.rs` | Nightscout REST client (portable) |
 | `src/settings.rs` | Settings file |
-| `src/render.rs` | Tray number, graph and trend arrow drawing |
-| `src/tray.rs`, `src/win.rs` | Windows-specific tray icon and OS integration |
+| `src/render.rs` | Graph and trend arrow drawing, glucose zones (portable) |
+| `src/platform/windows/` | Windows tray icon (the number is drawn into the icon), flyout hosting, DPAPI, autostart |
+| `src/platform/macos.rs` | macOS menu-bar item, flyout hosting, Keychain, LaunchAgent autostart |
 | `src/main.rs` | App state, flyout and settings window logic |
 | `ui/app.slint` | UI (Slint) |
 | `site/` | Landing page |

@@ -15,6 +15,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha1 = "0.10"
 raw-window-handle = "0.6"
+[target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = [
     "Win32_Foundation", "Win32_Security", "Win32_Security_Cryptography",
     "Win32_Graphics_Gdi", "Win32_Graphics_Dwm",
@@ -37,3 +38,11 @@ strip = true
 [package.metadata.winresource]
 ProductName = "Nightscout Glance"
 FileDescription = "Nightscout Glance"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+tray-icon = { version = "0.21", default-features = false }
+objc2 = "0.6"
+objc2-foundation = "0.3"
+objc2-app-kit = "0.3"
+security-framework = "3"
+libc = "0.2"

@@ -34,6 +34,7 @@ component Chip inherits Rectangle {
 
 component IconButton inherits Rectangle {
     in property <string> glyph;
+    in property <string> glyph-font: "Segoe Fluent Icons";
     in property <bool> dark;
     callback clicked();
     width: 30px;
@@ -42,7 +43,7 @@ component IconButton inherits Rectangle {
     background: ta.has-hover ? (dark ? #ffffff14 : #0000000d) : transparent;
     Text {
         text: root.glyph;
-        font-family: "Segoe Fluent Icons";
+        font-family: root.glyph-font;
         font-size: 15px;
         color: root.dark ? #ffffffc0 : #000000b0;
         horizontal-alignment: center;
@@ -56,6 +57,8 @@ component IconButton inherits Rectangle {
 
 export component Flyout inherits Window {
     in property <bool> dark: true;
+    // macOS has no Segoe icon font: plain symbols are used there instead.
+    in property <bool> mac;
     in property <string> value: "--";
     in property <string> unit: "mg/dL";
     in property <string> delta;
@@ -142,12 +145,14 @@ export component Flyout inherits Window {
         height: 30px;
         spacing: 2px;
         IconButton {
-            glyph: "\u{E8A7}";
+            glyph: root.mac ? "\u{2197}" : "\u{E8A7}";
+            glyph-font: root.mac ? "Helvetica Neue" : "Segoe Fluent Icons";
             dark: root.dark;
             clicked => { root.open-site(); }
         }
         IconButton {
-            glyph: "\u{E713}";
+            glyph: root.mac ? "\u{2699}" : "\u{E713}";
+            glyph-font: root.mac ? "Helvetica Neue" : "Segoe Fluent Icons";
             dark: root.dark;
             clicked => { root.open-settings(); }
         }
@@ -301,6 +306,7 @@ export component SettingsWindow inherits Window {
     in property <string> test-message;
     in property <string> error;
     in property <string> version;
+    in property <bool> mac;
     callback save();
     callback cancel();
     callback test();
@@ -343,7 +349,7 @@ export component SettingsWindow inherits Window {
                         color: Palette.foreground;
                     }
                     Text {
-                        text: "Glucose at a glance, right in your taskbar.";
+                        text: root.mac ? "Glucose at a glance, right in your menu bar." : "Glucose at a glance, right in your taskbar.";
                         font-size: 12px;
                         color: Palette.foreground.transparentize(0.4);
                     }
@@ -432,7 +438,7 @@ export component SettingsWindow inherits Window {
                     }
                 }
                 Text {
-                    text: "Values between Low and High are shown as in range. The tray number turns red below Low and amber above High.";
+                    text: root.mac ? "Values between Low and High are shown as in range. The menu bar number turns red below Low and amber above High." : "Values between Low and High are shown as in range. The tray number turns red below Low and amber above High.";
                     font-size: 12px;
                     wrap: word-wrap;
                     color: Palette.foreground.transparentize(0.4);
@@ -447,7 +453,7 @@ export component SettingsWindow inherits Window {
                     checked <=> root.alerts;
                 }
                 ToggleRow {
-                    title: "Start with Windows";
+                    title: root.mac ? "Start at login" : "Start with Windows";
                     description: "Launch Nightscout Glance automatically when I sign in.";
                     checked <=> root.autostart;
                 }

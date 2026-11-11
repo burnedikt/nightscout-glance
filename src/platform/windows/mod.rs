@@ -1,4 +1,16 @@
-//! Windows integration helpers: theme, autostart, DPAPI, monitors, misc.
+//! Windows implementation of the platform layer: tray icon, flyout window hosting,
+//! theme, autostart, DPAPI and friends.
+mod icon;
+mod shell_tray;
+
+use super::{TrayEvent, TrayState};
+use crate::render::{zone_color, Rgb};
+use crate::Flyout;
+use shell_tray::ShellTray;
+use slint::ComponentHandle;
+use std::cell::RefCell;
+use std::rc::Rc;
+use windows_sys::Win32::Graphics::Dwm::DwmSetWindowAttribute;
 use std::ptr::{null, null_mut};
 use windows_sys::Win32::Foundation::*;
 use windows_sys::Win32::Graphics::Gdi::*;
@@ -20,7 +32,7 @@ const RUN_KEY: &str = r"Software\Microsoft\Windows\CurrentVersion\Run";
 const RUN_VALUE: &str = "NightscoutGlance";
 
 /// True when the taskbar ("Windows mode") uses the light theme.
-pub fn taskbar_is_light() -> bool {
+fn taskbar_is_light() -> bool {
     let mut data: u32 = 0;
     let mut size = 4u32;
     let rc = unsafe {
@@ -52,7 +64,7 @@ pub fn watch_theme(cb: impl Fn() + Send + 'static) {
 
 /// Opts the process into dark context menus when the app theme is dark (undocumented uxtheme
 /// API, also used by Explorer; fails harmlessly on systems without it).
-pub fn enable_dark_menus() {
+pub fn init() {
     unsafe {
         let ux = LoadLibraryW(w("uxtheme.dll").as_ptr());
         if ux.is_null() {
@@ -169,20 +181,20 @@ pub fn utc_offset_minutes() -> i64 {
     }
 }
 
-pub fn cursor_pos() -> (i32, i32) {
+fn cursor_pos() -> (i32, i32) {
     let mut p = POINT { x: 0, y: 0 };
     unsafe { GetCursorPos(&mut p) };
     (p.x, p.y)
 }
 
-pub fn window_rect(hwnd: HWND) -> RECT {
+fn window_rect(hwnd: HWND) -> RECT {
     let mut r = RECT { left: 0, top: 0, right: 0, bottom: 0 };
     unsafe { GetWindowRect(hwnd, &mut r) };
     r
 }
 
 /// Work area (screen minus taskbar) of the monitor containing the point.
-pub fn work_area(x: i32, y: i32) -> RECT {
+fn work_area(x: i32, y: i32) -> RECT {
     unsafe {
         let mon = MonitorFromPoint(POINT { x, y }, MONITOR_DEFAULTTONEAREST);
         let mut mi: MONITORINFO = std::mem::zeroed();
@@ -192,6 +204,155 @@ pub fn work_area(x: i32, y: i32) -> RECT {
     }
 }
 
-pub fn small_icon_size() -> i32 {
+fn small_icon_size() -> i32 {
     unsafe { GetSystemMetrics(SM_CXSMICON).max(16) }
+}
+
+pub fn system_is_dark() -> bool {
+    !taskbar_is_light()
+}
+
+pub fn config_dir() -> std::path::PathBuf {
+    let base = std::env::var_os("APPDATA").map(std::path::PathBuf::from).unwrap_or_else(|| ".".into());
+    base.join("Nightscout Glance")
+}
+
+fn hwnd_of(window: &slint::Window) -> Option<HWND> {
+    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+    let handle = window.window_handle();
+    let handle = handle.window_handle().ok()?;
+    match handle.as_raw() {
+        RawWindowHandle::Win32(h) => Some(h.hwnd.get() as HWND),
+        _ => None,
+    }
+}
+
+pub fn focus_window(window: &slint::Window) {
+    if let Some(hwnd) = hwnd_of(window) {
+        unsafe { SetForegroundWindow(hwnd) };
+    }
+}
+
+// ---------------------------------------------------------------------------------------
+// Tray: the value is drawn into the icon itself.
+
+pub struct Tray {
+    shell: ShellTray,
+    icon_key: RefCell<String>,
+    tip: RefCell<String>,
+}
+
+impl Tray {
+    pub fn new(handler: Rc<dyn Fn(TrayEvent)>) -> Tray {
+        Tray { shell: ShellTray::new(handler), icon_key: RefCell::new(String::new()), tip: RefCell::new(String::new()) }
+    }
+
+    pub fn update(&self, st: &TrayState) {
+        let light = taskbar_is_light();
+        let neutral: Rgb = if light { (0x1a, 0x1a, 0x1a) } else { (255, 255, 255) };
+        let rgb = st.zone.map_or(neutral, |z| zone_color(z, !light, neutral));
+        let dim = st.stale || st.zone.is_none();
+        let size = small_icon_size();
+        let key = format!("{}|{rgb:?}|{dim}|{size}", st.text);
+        if key != *self.icon_key.borrow() {
+            let pixels = icon::icon_pixels(st.text, rgb, size, dim);
+            self.shell.set_icon(icon::icon_from_pixels(&pixels, size), st.tip);
+            *self.icon_key.borrow_mut() = key;
+            *self.tip.borrow_mut() = st.tip.to_string();
+        } else if st.tip != *self.tip.borrow() {
+            self.shell.set_tip(st.tip);
+            *self.tip.borrow_mut() = st.tip.to_string();
+        }
+    }
+
+    pub fn notify(&self, title: &str, body: &str) {
+        self.shell.notify(title, body);
+    }
+}
+
+// ---------------------------------------------------------------------------------------
+// Flyout hosting
+//
+// Slint considers the flyout permanently shown; we show, hide and move the native window
+// ourselves so it never takes focus or appears in the taskbar.
+
+pub struct FlyoutHost {
+    hwnd: HWND,
+}
+
+impl FlyoutHost {
+    pub fn new() -> Self {
+        FlyoutHost { hwnd: null_mut() }
+    }
+
+    /// Called once before the event loop starts.
+    pub fn prepare(&self, flyout: &Flyout) {
+        flyout.window().set_position(slint::PhysicalPosition::new(-32000, -32000));
+        let _ = flyout.show();
+    }
+
+    /// Takes over the native window once it exists. Returns false if it is not there yet.
+    pub fn attach(&mut self, flyout: &Flyout) -> bool {
+        let Some(hwnd) = hwnd_of(flyout.window()) else { return false };
+        unsafe {
+            ShowWindow(hwnd, SW_HIDE);
+            let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE) as u32;
+            let ex = (ex | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE | WS_EX_TOPMOST) & !WS_EX_APPWINDOW;
+            SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex as isize);
+            let round: u32 = 2; // DWMWCP_ROUND
+            DwmSetWindowAttribute(hwnd, 33, &round as *const u32 as *const _, 4);
+        }
+        self.hwnd = hwnd;
+        true
+    }
+
+    pub fn ready(&self) -> bool {
+        !self.hwnd.is_null()
+    }
+
+    pub fn show(&mut self, flyout: &Flyout, tray: &Tray) {
+        let scale = flyout.window().scale_factor();
+        let wr = window_rect(self.hwnd);
+        let (w, h) = (wr.right - wr.left, wr.bottom - wr.top);
+        let (cx, cy) = cursor_pos();
+        let (ax, top, bottom) = match tray.shell.icon_rect() {
+            Some(r) => ((r.left + r.right) / 2, r.top, r.bottom),
+            None => (cx, cy, cy),
+        };
+        let wa = work_area(ax, top);
+        let gap = (10.0 * scale) as i32;
+        let x = (ax - w / 2).clamp(wa.left + gap, (wa.right - w - gap).max(wa.left + gap));
+        let y = if top >= wa.bottom - 4 {
+            wa.bottom - h - gap // taskbar at the bottom
+        } else if bottom <= wa.top + 4 {
+            wa.top + gap // taskbar at the top
+        } else if top - h - gap >= wa.top {
+            top - h - gap // icon lives in the overflow popup
+        } else {
+            bottom + gap
+        };
+        unsafe {
+            SetWindowPos(self.hwnd, HWND_TOPMOST, x, y, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+        }
+        // Whatever was drawn while the window was hidden is gone: repaint everything.
+        flyout.set_repaint_tick(!flyout.get_repaint_tick());
+        flyout.window().request_redraw();
+    }
+
+    pub fn hide(&mut self, _flyout: &Flyout) {
+        unsafe { ShowWindow(self.hwnd, SW_HIDE) };
+    }
+
+    /// True while the pointer is over the tray icon or the flyout.
+    pub fn pointer_inside(&self, _flyout: &Flyout, tray: &Tray) -> bool {
+        let (x, y) = cursor_pos();
+        let within = |r: RECT, m: i32| x >= r.left - m && x < r.right + m && y >= r.top - m && y < r.bottom + m;
+        within(window_rect(self.hwnd), 14) || tray.shell.icon_rect().is_some_and(|r| within(r, 3))
+    }
+
+    /// Screen rectangle of the flyout (development aid).
+    pub fn debug_rect(&self, _flyout: &Flyout) -> (i32, i32, i32, i32) {
+        let r = window_rect(self.hwnd);
+        (r.left, r.top, r.right - r.left, r.bottom - r.top)
+    }
 }

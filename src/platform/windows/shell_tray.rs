@@ -3,7 +3,8 @@
 //! Uses NOTIFYICON_VERSION_4 so Windows tells us when the pointer rests on the icon
 //! (NIN_POPUPOPEN) instead of showing its plain-text tooltip. That is what drives the
 //! rich hover flyout.
-use crate::win::w;
+use super::w;
+use crate::platform::*;
 use std::cell::{Cell, RefCell};
 use std::ptr::{null, null_mut};
 use std::rc::Rc;
@@ -11,20 +12,6 @@ use windows_sys::Win32::Foundation::*;
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows_sys::Win32::UI::Shell::*;
 use windows_sys::Win32::UI::WindowsAndMessaging::*;
-
-pub enum TrayEvent {
-    /// Pointer rests on the icon.
-    Hover,
-    Click,
-    DoubleClick,
-    MenuOpening,
-    Command(u32),
-}
-
-pub const CMD_OPEN_SITE: u32 = 1;
-pub const CMD_REFRESH: u32 = 2;
-pub const CMD_SETTINGS: u32 = 3;
-pub const CMD_QUIT: u32 = 4;
 
 const WM_TRAY: u32 = WM_APP + 1;
 const EV_SELECT: u32 = 0x400; // NIN_SELECT
@@ -56,13 +43,13 @@ fn copy_str(dst: &mut [u16], s: &str) {
     dst[i] = 0;
 }
 
-pub struct Tray {
+pub struct ShellTray {
     hwnd: HWND,
     owns_icon: Cell<bool>,
 }
 
-impl Tray {
-    pub fn new(handler: Handler) -> Tray {
+impl ShellTray {
+    pub fn new(handler: Handler) -> ShellTray {
         HANDLER.with(|h| *h.borrow_mut() = Some(handler));
         unsafe {
             let hinst = GetModuleHandleW(null());
@@ -86,7 +73,7 @@ impl Tray {
             copy_str(&mut nid.szTip, "Nightscout Glance");
             add(&nid);
             NID.with(|n| *n.borrow_mut() = Some(nid));
-            Tray { hwnd, owns_icon: Cell::new(false) }
+            ShellTray { hwnd, owns_icon: Cell::new(false) }
         }
     }
 
@@ -145,7 +132,7 @@ impl Tray {
     }
 }
 
-impl Drop for Tray {
+impl Drop for ShellTray {
     fn drop(&mut self) {
         NID.with(|n| {
             if let Some(nid) = n.borrow_mut().take() {

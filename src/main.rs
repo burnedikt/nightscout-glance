@@ -1,12 +1,12 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod nightscout;
+mod platform;
 mod render;
 mod settings;
-mod tray;
-mod win;
 
 use nightscout::{Entry, MMOL_FACTOR};
+use platform::{FlyoutHost, Tray, TrayEvent, TrayState};
 use render::{zone_color, zone_of, Rgb, Zone};
 use settings::Settings;
 use slint::{ComponentHandle, ModelRc, Timer, TimerMode, VecModel};
@@ -14,10 +14,6 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::sync::mpsc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
-use tray::{Tray, TrayEvent};
-use windows_sys::Win32::Foundation::HWND;
-use windows_sys::Win32::Graphics::Dwm::DwmSetWindowAttribute;
-use windows_sys::Win32::UI::WindowsAndMessaging::*;
 
 slint::include_modules!();
 
@@ -51,16 +47,6 @@ fn color(c: Rgb) -> slint::Color {
     slint::Color::from_rgb_u8(c.0, c.1, c.2)
 }
 
-fn hwnd_of(window: &slint::Window) -> Option<HWND> {
-    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
-    let handle = window.window_handle();
-    let handle = handle.window_handle().ok()?;
-    match handle.as_raw() {
-        RawWindowHandle::Win32(h) => Some(h.hwnd.get() as HWND),
-        _ => None,
-    }
-}
-
 struct App {
     settings: Settings,
     entries: Vec<Entry>,
@@ -71,13 +57,11 @@ struct App {
     pinned: bool,
 
     flyout: Flyout,
-    flyout_hwnd: HWND,
+    host: FlyoutHost,
     flyout_visible: bool,
     left_at: Option<Instant>,
 
     tray: Tray,
-    icon_key: String,
-    tip: String,
 
     last_zone: Option<Zone>,
     stale_notified: bool,
@@ -114,17 +98,13 @@ impl App {
     /// Updates tray icon, tooltip, notifications and (if visible) the flyout.
     fn refresh_ui(&mut self) {
         let now = now_ms();
-        let light = win::taskbar_is_light();
-        let neutral: Rgb = if light { (0x1a, 0x1a, 0x1a) } else { (255, 255, 255) };
-        let size = win::small_icon_size();
         let s = &self.settings;
-
-        let (text, rgb, dim, tip) = match self.entries.last() {
+        let (text, arrow, zone, stale, tip) = match self.entries.last() {
             Some(e) => {
                 let age = (now - e.ts) / 60_000;
-                let zone = zone_of(e.sgv, s);
-                let tip = format!("{} {} {}  ·  {}", s.fmt(e.sgv), s.unit(), render::arrow_char(&e.direction), ago_text(age));
-                (s.fmt(e.sgv), zone_color(zone, !light, neutral), age >= STALE_MINUTES, tip)
+                let arrow = render::arrow_char(&e.direction);
+                let tip = format!("{} {} {}  \u{b7}  {}", s.fmt(e.sgv), s.unit(), arrow, ago_text(age));
+                (s.fmt(e.sgv), arrow, Some(zone_of(e.sgv, s)), age >= STALE_MINUTES, tip)
             }
             None => {
                 let tip = if s.url.is_empty() && !self.demo {
@@ -132,20 +112,10 @@ impl App {
                 } else {
                     self.error.clone().unwrap_or_else(|| "Nightscout Glance: connecting\u{2026}".into())
                 };
-                ("--".to_string(), neutral, true, tip)
+                ("--".to_string(), "", None, true, tip)
             }
         };
-
-        let key = format!("{text}|{rgb:?}|{dim}|{size}");
-        if key != self.icon_key {
-            let pixels = render::icon_pixels(&text, rgb, size, dim);
-            self.tray.set_icon(render::icon_from_pixels(&pixels, size), &tip);
-            self.icon_key = key;
-            self.tip = tip;
-        } else if tip != self.tip {
-            self.tray.set_tip(&tip);
-            self.tip = tip;
-        }
+        self.tray.update(&TrayState { text: &text, arrow, zone, stale, tip: &tip });
 
         self.check_alerts(now);
         if self.flyout_visible {
@@ -191,10 +161,10 @@ impl App {
         let f = &self.flyout;
         let s = &self.settings;
         let now = now_ms();
-        let dark = self.force_dark.unwrap_or_else(|| !win::taskbar_is_light());
+        let dark = self.force_dark.unwrap_or_else(platform::system_is_dark);
         let scale = f.window().scale_factor();
         let fg: Rgb = if dark { (255, 255, 255) } else { (0x1a, 0x1a, 0x1a) };
-        let tz = win::utc_offset_minutes();
+        let tz = platform::utc_offset_minutes();
 
         f.set_dark(dark);
         f.set_range_index(RANGES.iter().position(|r| *r == s.range_hours).unwrap_or(0) as i32);
@@ -270,36 +240,25 @@ impl App {
 }
 
 // ---------------------------------------------------------------------------------------
-// Flyout window management
-//
-// Slint considers the flyout permanently "shown"; we show/hide/move the native window
-// ourselves so it never takes focus or appears in the taskbar.
+// Flyout: shown while the pointer is over the tray item or the flyout itself. How the
+// native window is shown, placed and hidden is up to the platform's FlyoutHost.
 
-fn init_flyout_window() {
-    let done = with_app(|app| match hwnd_of(app.flyout.window()) {
-        Some(hwnd) => {
-            unsafe {
-                ShowWindow(hwnd, SW_HIDE);
-                let ex = GetWindowLongPtrW(hwnd, GWL_EXSTYLE) as u32;
-                let ex = (ex | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE | WS_EX_TOPMOST) & !WS_EX_APPWINDOW;
-                SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex as isize);
-                let round: u32 = 2; // DWMWCP_ROUND
-                DwmSetWindowAttribute(hwnd, 33, &round as *const u32 as *const _, 4);
-            }
-            app.flyout_hwnd = hwnd;
-            true
-        }
-        None => false,
-    })
-    .unwrap_or(true);
+/// Runs once the event loop is up: draws the tray item and hooks up the flyout window.
+fn startup() {
+    with_app(|app| app.refresh_ui());
+    attach_flyout();
+}
+
+fn attach_flyout() {
+    let done = with_app(|app| app.host.attach(&app.flyout)).unwrap_or(true);
     if !done {
-        Timer::single_shot(Duration::from_millis(40), init_flyout_window);
+        Timer::single_shot(Duration::from_millis(40), attach_flyout);
     }
 }
 
 fn show_flyout() {
     let started = with_app(|app| {
-        if app.flyout_hwnd.is_null() {
+        if !app.host.ready() {
             return false;
         }
         app.left_at = None;
@@ -308,33 +267,7 @@ fn show_flyout() {
         }
         app.flyout_visible = true;
         app.update_flyout();
-
-        let scale = app.flyout.window().scale_factor();
-        let wr = win::window_rect(app.flyout_hwnd);
-        let (w, h) = (wr.right - wr.left, wr.bottom - wr.top);
-        let (cx, cy) = win::cursor_pos();
-        let (ax, top, bottom) = match app.tray.icon_rect() {
-            Some(r) => ((r.left + r.right) / 2, r.top, r.bottom),
-            None => (cx, cy, cy),
-        };
-        let wa = win::work_area(ax, top);
-        let gap = (10.0 * scale) as i32;
-        let x = (ax - w / 2).clamp(wa.left + gap, (wa.right - w - gap).max(wa.left + gap));
-        let y = if top >= wa.bottom - 4 {
-            wa.bottom - h - gap // taskbar at the bottom
-        } else if bottom <= wa.top + 4 {
-            wa.top + gap // taskbar at the top
-        } else if top - h - gap >= wa.top {
-            top - h - gap // icon lives in the overflow popup
-        } else {
-            bottom + gap
-        };
-        unsafe {
-            SetWindowPos(app.flyout_hwnd, HWND_TOPMOST, x, y, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
-        }
-        // Whatever was drawn while the window was hidden is gone: repaint everything.
-        app.flyout.set_repaint_tick(!app.flyout.get_repaint_tick());
-        app.flyout.window().request_redraw();
+        app.host.show(&app.flyout, &app.tray);
         true
     });
     if started == Some(true) {
@@ -346,26 +279,17 @@ fn hide_flyout() {
     with_app(|app| {
         if app.flyout_visible {
             app.flyout_visible = false;
-            unsafe { ShowWindow(app.flyout_hwnd, SW_HIDE) };
+            app.host.hide(&app.flyout);
         }
     });
 }
 
-/// Keeps the flyout open while the pointer is over the tray icon or the flyout itself.
 fn hover_tick() {
     let stop = with_app(|app| {
         if !app.flyout_visible {
             return true;
         }
-        if app.pinned {
-            return false;
-        }
-        let (x, y) = win::cursor_pos();
-        let within = |r: windows_sys::Win32::Foundation::RECT, m: i32| {
-            x >= r.left - m && x < r.right + m && y >= r.top - m && y < r.bottom + m
-        };
-        let inside = within(win::window_rect(app.flyout_hwnd), 14) || app.tray.icon_rect().is_some_and(|r| within(r, 3));
-        if inside {
+        if app.pinned || app.host.pointer_inside(&app.flyout, &app.tray) {
             app.left_at = None;
             return false;
         }
@@ -373,7 +297,7 @@ fn hover_tick() {
             return false;
         }
         app.flyout_visible = false;
-        unsafe { ShowWindow(app.flyout_hwnd, SW_HIDE) };
+        app.host.hide(&app.flyout);
         true
     })
     .unwrap_or(false);
@@ -414,7 +338,8 @@ fn build_settings_window(s: &Settings) -> SettingsWindow {
     win.set_unit_index(s.mmol as i32);
     fill_thresholds(&win, s);
     win.set_alerts(s.alerts);
-    win.set_autostart(win::autostart_enabled());
+    win.set_autostart(platform::autostart_enabled());
+    win.set_mac(platform::IS_MAC);
     win.set_version(format!("Version {}  ·  Made with Slint", env!("CARGO_PKG_VERSION")).into());
 
     win.on_cancel(close_settings);
@@ -483,7 +408,7 @@ fn build_settings_window(s: &Settings) -> SettingsWindow {
         let url = nightscout::normalize_url(&win.get_url());
         let secret = win.get_secret().trim().to_string();
         let alerts = win.get_alerts();
-        win::set_autostart(win.get_autostart());
+        platform::set_autostart(win.get_autostart());
         with_app(|app| {
             let source_changed = app.settings.url != url || app.settings.secret != secret;
             app.settings = Settings { url, secret, mmol, urgent_low: ul, low: l, high: h, urgent_high: uh, alerts, ..app.settings.clone() };
@@ -514,16 +439,14 @@ fn open_settings() {
         }
     };
     let _ = win.show();
-    if let Some(hwnd) = hwnd_of(win.window()) {
-        unsafe { SetForegroundWindow(hwnd) };
-    }
+    platform::focus_window(win.window());
 }
 
 // ---------------------------------------------------------------------------------------
 
 fn open_site() {
     match with_app(|a| a.settings.url.clone()) {
-        Some(url) if !url.is_empty() => win::open_url(&nightscout::normalize_url(&url)),
+        Some(url) if !url.is_empty() => platform::open_url(&nightscout::normalize_url(&url)),
         _ => open_settings(),
     }
 }
@@ -533,12 +456,12 @@ fn on_tray_event(ev: TrayEvent) {
         TrayEvent::Hover | TrayEvent::Click => show_flyout(),
         TrayEvent::DoubleClick => open_site(),
         TrayEvent::MenuOpening => hide_flyout(),
-        TrayEvent::Command(tray::CMD_OPEN_SITE) => open_site(),
-        TrayEvent::Command(tray::CMD_REFRESH) => {
+        TrayEvent::Command(platform::CMD_OPEN_SITE) => open_site(),
+        TrayEvent::Command(platform::CMD_REFRESH) => {
             with_app(|a| a.tx.send(WorkerMsg::Refresh).ok());
         }
-        TrayEvent::Command(tray::CMD_SETTINGS) => open_settings(),
-        TrayEvent::Command(tray::CMD_QUIT) => {
+        TrayEvent::Command(platform::CMD_SETTINGS) => open_settings(),
+        TrayEvent::Command(platform::CMD_QUIT) => {
             with_app(|a| a.tx.send(WorkerMsg::Quit).ok());
             let _ = slint::quit_event_loop();
         }
@@ -608,14 +531,6 @@ fn take_screenshots(dir: std::path::PathBuf) {
         save_snapshot(win.window(), &dir.join(format!("{name}.png")));
         let _ = win.hide();
     }
-    let s = Settings::default();
-    for (theme, dark, bg, neutral) in [("dark", true, (0x1c, 0x1c, 0x1c), (255, 255, 255)), ("light", false, (0xee, 0xee, 0xee), (0x1a, 0x1a, 0x1a))] {
-        for v in [112.0f32, 64.0, 188.0, 271.0] {
-            let rgb = zone_color(zone_of(v, &s), dark, neutral);
-            let pm = render::icon_preview(&s.fmt(v), rgb, 16, bg, 6);
-            let _ = pm.save_png(dir.join(format!("icon-{theme}-{v:.0}.png")));
-        }
-    }
     let _ = slint::quit_event_loop();
 }
 
@@ -624,13 +539,14 @@ fn main() -> Result<(), slint::PlatformError> {
     let shots = args.iter().position(|a| a == "--screenshots").and_then(|i| args.get(i + 1)).map(std::path::PathBuf::from);
     let demo = shots.is_some() || args.iter().any(|a| a == "--demo");
 
-    if shots.is_none() && !win::single_instance() {
+    if shots.is_none() && !platform::single_instance() {
         return Ok(());
     }
-    win::enable_dark_menus();
+    platform::init();
 
     let settings = Settings::load();
     let flyout = Flyout::new()?;
+    flyout.set_mac(platform::IS_MAC);
     flyout.on_range_selected(|i| {
         with_app(|app| {
             app.settings.range_hours = RANGES[(i as usize).min(RANGES.len() - 1)];
@@ -659,21 +575,17 @@ fn main() -> Result<(), slint::PlatformError> {
             force_dark: None,
             pinned: false,
             flyout: flyout.clone_strong(),
-            flyout_hwnd: std::ptr::null_mut(),
+            host: FlyoutHost::new(),
             flyout_visible: false,
             left_at: None,
             tray,
-            icon_key: String::new(),
-            tip: String::new(),
             last_zone: None,
             stale_notified: false,
             tx,
         })
     });
-    with_app(|a| a.refresh_ui());
-
     std::thread::spawn(move || worker(rx, settings, demo));
-    win::watch_theme(|| {
+    platform::watch_theme(|| {
         let _ = slint::invoke_from_event_loop(|| {
             with_app(|a| a.refresh_ui());
         });
@@ -685,10 +597,8 @@ fn main() -> Result<(), slint::PlatformError> {
         with_app(|a| a.refresh_ui());
     });
 
-    // Create the native flyout window off-screen, then take over its visibility.
-    flyout.window().set_position(slint::PhysicalPosition::new(-32000, -32000));
-    flyout.show()?;
-    Timer::single_shot(Duration::from_millis(0), init_flyout_window);
+    with_app(|a| a.host.prepare(&a.flyout));
+    Timer::single_shot(Duration::from_millis(0), startup);
 
     if let Some(dir) = shots {
         Timer::single_shot(Duration::from_millis(1500), move || take_screenshots(dir));
@@ -704,8 +614,8 @@ fn main() -> Result<(), slint::PlatformError> {
             with_app(|a| a.pinned = true);
             show_flyout();
             with_app(|a| {
-                let r = win::window_rect(a.flyout_hwnd);
-                let _ = std::fs::write(std::env::temp_dir().join("ng-flyout-rect.txt"), format!("{} {} {} {}", r.left, r.top, r.right - r.left, r.bottom - r.top));
+                let (x, y, w, h) = a.host.debug_rect(&a.flyout);
+                let _ = std::fs::write(std::env::temp_dir().join("ng-flyout-rect.txt"), format!("{x} {y} {w} {h}"));
             });
         });
     } else if not_configured {
@@ -713,6 +623,6 @@ fn main() -> Result<(), slint::PlatformError> {
     }
 
     slint::run_event_loop_until_quit()?;
-    APP.with(|a| a.borrow_mut().take()); // removes the tray icon
+    APP.with(|a| a.borrow_mut().take()); // removes the tray item
     Ok(())
 }

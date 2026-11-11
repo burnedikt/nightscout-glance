@@ -9,7 +9,7 @@ pub struct Settings {
     /// API secret / access token, in memory only.
     #[serde(skip)]
     pub secret: String,
-    /// The secret, encrypted for the current Windows user (DPAPI), hex encoded.
+    /// The secret as protected by the OS (Windows: DPAPI blob, macOS: a Keychain marker).
     pub secret_enc: String,
     pub mmol: bool,
     // Thresholds are always stored in mg/dL.
@@ -39,8 +39,7 @@ impl Default for Settings {
 }
 
 fn path() -> PathBuf {
-    let base = std::env::var_os("APPDATA").map(PathBuf::from).unwrap_or_else(|| PathBuf::from("."));
-    base.join("Nightscout Glance").join("settings.json")
+    crate::platform::config_dir().join("settings.json")
 }
 
 impl Settings {
@@ -49,12 +48,12 @@ impl Settings {
             .ok()
             .and_then(|t| serde_json::from_str(&t).ok())
             .unwrap_or_default();
-        s.secret = crate::win::unprotect(&s.secret_enc).unwrap_or_default();
+        s.secret = crate::platform::unprotect(&s.secret_enc).unwrap_or_default();
         s
     }
 
     pub fn save(&mut self) {
-        self.secret_enc = if self.secret.is_empty() { String::new() } else { crate::win::protect(&self.secret) };
+        self.secret_enc = if self.secret.is_empty() { String::new() } else { crate::platform::protect(&self.secret) };
         let p = path();
         if let Some(dir) = p.parent() {
             let _ = std::fs::create_dir_all(dir);
