@@ -70,22 +70,6 @@ Useful flags while developing:
 | `site/` | Landing page |
 | `assets/brand/` | Icon and brand image set |
 
-## Code signing policy
-
-Releases up to v0.2.0 are not signed. The release workflow is prepared to sign future releases; how to set it up is described in [docs/signing.md](docs/signing.md).
-
-- **Windows:** free code signing provided by [SignPath.io](https://about.signpath.io/), certificate by [SignPath Foundation](https://signpath.org/). This applies once the project's application has been accepted; until then the exe is unsigned.
-- **macOS:** signed with the maintainer's Apple Developer ID and notarized by Apple, once that certificate exists.
-
-All binaries are built from this repository by GitHub Actions on GitHub-hosted runners (`.github/workflows/release.yml`), and every signing request is approved manually.
-
-Team roles:
-
-- Committers and reviewers: [burnedikt](https://github.com/burnedikt)
-- Approvers: [burnedikt](https://github.com/burnedikt)
-
-Privacy: this program will not transfer any information to other networked systems unless specifically requested by the user. The only system it contacts is the Nightscout site you enter in the settings.
-
 ## Not a medical device
 
 Nightscout Glance is a convenience display. Do not use it to make treatment decisions; always confirm with your CGM receiver or a blood glucose meter. It is not affiliated with or endorsed by the Nightscout project.
